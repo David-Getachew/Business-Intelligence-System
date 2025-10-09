@@ -22,6 +22,10 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [preset, setPreset] = useState('today');
+  const [date, setDate] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
 
   const handlePreset = (presetName: string) => {
     setPreset(presetName);
@@ -47,58 +51,77 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     });
   };
 
+  const handleSelect = (selectedDate: { from: Date | undefined; to: Date | undefined }) => {
+    setDate(selectedDate);
+    if (selectedDate.from && selectedDate.to) {
+      setPreset('custom');
+      onChange({
+        start: format(selectedDate.from, 'yyyy-MM-dd'),
+        end: format(selectedDate.to, 'yyyy-MM-dd'),
+      });
+    }
+  };
+
+  const formatDateRange = () => {
+    if (!value.start || !value.end) return '';
+    if (value.start === value.end) {
+      return format(new Date(value.start), 'MMM d, yyyy');
+    }
+    return `${format(new Date(value.start), 'MMM d, yyyy')} - ${format(new Date(value.end), 'MMM d, yyyy')}`;
+  };
+
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <Button
-        variant={preset === 'today' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => handlePreset('today')}
-      >
-        Today
-      </Button>
-      <Button
-        variant={preset === 'week' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => handlePreset('week')}
-      >
-        This Week
-      </Button>
-      <Button
-        variant={preset === 'month' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => handlePreset('month')}
-      >
-        This Month
-      </Button>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={preset === 'custom' ? 'default' : 'outline'}
-            size="sm"
-            className={cn('gap-2')}
-          >
-            <CalendarIcon className="h-4 w-4" />
-            Custom
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={value.start ? new Date(value.start) : undefined}
-            onSelect={(date) => {
-              if (date) {
-                setPreset('custom');
-                onChange({
-                  start: format(date, 'yyyy-MM-dd'),
-                  end: format(new Date(), 'yyyy-MM-dd'),
-                });
-              }
-            }}
-            initialFocus
-            className="pointer-events-auto"
-          />
-        </PopoverContent>
-      </Popover>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={preset === 'today' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handlePreset('today')}
+        >
+          Today
+        </Button>
+        <Button
+          variant={preset === 'week' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handlePreset('week')}
+        >
+          This Week
+        </Button>
+        <Button
+          variant={preset === 'month' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handlePreset('month')}
+        >
+          This Month
+        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={preset === 'custom' ? 'default' : 'outline'}
+              size="sm"
+              className={cn('gap-2')}
+            >
+              <CalendarIcon className="h-4 w-4" />
+              Custom
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={date}
+              onSelect={handleSelect}
+              numberOfMonths={2}
+              initialFocus
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {value.start && value.end && (
+        <p className="text-sm text-muted-foreground">
+          {formatDateRange()}
+        </p>
+      )}
     </div>
   );
 }
