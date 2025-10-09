@@ -51,6 +51,7 @@ export function ExpensesPieChart() {
                   textAnchor={x > cx ? 'start' : 'end'} 
                   dominantBaseline="central"
                   fontSize={12}
+                  fontWeight="600"
                 >
                   {`${name}: ${percentage}%`}
                 </text>

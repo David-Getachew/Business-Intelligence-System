@@ -10,10 +10,12 @@ export function AIInsightCard() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-primary">AI Insights</span>
+        <Sparkles className="h-5 w-5 text-primary" />
+        <span className="text-lg font-bold text-primary">AI Insights</span>
       </div>
-      <p className="text-xs text-muted-foreground mb-1">Latest Week</p>
+      <p className="text-sm text-muted-foreground mb-4 font-medium">
+        Latest Week
+      </p>
       <p className="text-sm text-muted-foreground mb-4">
         {latestAnalysis.analysis.substring(0, 120)}...
       </p>

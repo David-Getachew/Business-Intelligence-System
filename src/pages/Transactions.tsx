@@ -79,9 +79,24 @@ export default function Transactions() {
           <CardContent>
             <Tabs defaultValue="sales" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="sales">Sales</TabsTrigger>
-                <TabsTrigger value="purchases">Purchases</TabsTrigger>
-                <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                <TabsTrigger 
+                  value="sales" 
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Sales
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="purchases" 
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Purchases
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="expenses" 
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Expenses
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="sales" className="space-y-4">
