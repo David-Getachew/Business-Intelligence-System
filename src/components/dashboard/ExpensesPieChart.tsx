@@ -18,7 +18,7 @@ const COLORS = [
 
 export function ExpensesPieChart() {
   return (
-    <ResponsiveContainer width="100%" height={280}>
+    <ResponsiveContainer width="100%" height={300}>
       <PieChart>
         <Pie
           data={mockExpenseData}
@@ -40,7 +40,16 @@ export function ExpensesPieChart() {
             border: '1px solid hsl(var(--border))',
             borderRadius: '8px',
           }}
-          formatter={(value: number) => `$${value.toFixed(2)}`}
+          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']}
+        />
+        <Legend 
+          layout="vertical" 
+          verticalAlign="middle" 
+          align="right"
+          wrapperStyle={{ paddingLeft: '20px' }}
+          formatter={(value, entry, index) => (
+            <span className="text-sm dark:text-gray-300">{value}</span>
+          )}
         />
       </PieChart>
     </ResponsiveContainer>

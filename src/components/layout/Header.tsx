@@ -35,7 +35,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="text-primary-foreground font-heading font-bold text-lg">B</span>
             </div>
             <h1 className="font-heading font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              BizIntel
+              Sunset sips n' bites
             </h1>
           </div>
         </div>

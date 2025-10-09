@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -37,7 +36,6 @@ interface PurchaseItem {
   quantity: number;
   unitCost: number;
   totalCost: number;
-  notes: string;
 }
 
 export default function Purchases() {
@@ -45,7 +43,6 @@ export default function Purchases() {
     ingredientName: '',
     quantity: 1,
     unitCost: 0,
-    notes: '',
   });
   const [batch, setBatch] = useState<PurchaseItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,7 +63,6 @@ export default function Purchases() {
       quantity: formData.quantity,
       unitCost: formData.unitCost,
       totalCost: totalCost,
-      notes: formData.notes,
     };
 
     if (editingId) {
@@ -80,7 +76,6 @@ export default function Purchases() {
       ingredientName: '',
       quantity: 1,
       unitCost: 0,
-      notes: '',
     });
     toast.success('Purchase added to batch');
   };
@@ -90,7 +85,6 @@ export default function Purchases() {
       ingredientName: item.ingredientName,
       quantity: item.quantity,
       unitCost: item.unitCost,
-      notes: item.notes,
     });
     setEditingId(item.id);
   };
@@ -106,7 +100,6 @@ export default function Purchases() {
       ingredientName: '',
       quantity: 1,
       unitCost: 0,
-      notes: '',
     });
     setEditingId(null);
     toast.success('Batch cleared');
@@ -122,7 +115,6 @@ export default function Purchases() {
         ingredientName: '',
         quantity: 1,
         unitCost: 0,
-        notes: '',
       });
     }, 1000);
   };
@@ -196,16 +188,6 @@ export default function Purchases() {
                 value={`$${totalCost.toFixed(2)}`}
                 readOnly
                 className="bg-muted"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Optional notes about this purchase..."
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               />
             </div>
 

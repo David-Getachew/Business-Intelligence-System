@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   X,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,7 +26,7 @@ const navigation = [
   { name: 'Expenses', href: '/expenses/new', icon: Receipt },
   { name: 'Menu & Recipes', href: '/menu', icon: UtensilsCrossed },
   { name: 'Inventory', href: '/inventory', icon: Boxes },
-  { name: 'Transactions', href: '/transactions', icon: FileText },
+  { name: 'Transactions', href: '/transactions', icon: CreditCard },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -44,7 +45,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static',
+          'fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-[calc(100vh-4rem)]',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -53,7 +54,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-heading font-bold text-lg">B</span>
             </div>
-            <h1 className="font-heading font-bold text-xl">BizIntel</h1>
+            <h1 className="font-heading font-bold text-xl">Sunset sips n' bites</h1>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />

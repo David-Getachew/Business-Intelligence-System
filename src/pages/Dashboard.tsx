@@ -79,31 +79,31 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-7">
-        <Card className="lg:col-span-4 shadow-card">
-          <CardHeader>
-            <CardTitle>Revenue vs Expenses</CardTitle>
-            <CardDescription>Last 30 days performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RevenueChart data={mockChartData} />
-          </CardContent>
-        </Card>
+      {/* Revenue Chart - Full Width */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Revenue vs Expenses</CardTitle>
+          <CardDescription>Last 30 days performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RevenueChart data={mockChartData} />
+        </CardContent>
+      </Card>
 
-        <Card className="lg:col-span-3 shadow-card">
-          <CardHeader>
-            <CardTitle>Top Items</CardTitle>
-            <CardDescription>Best performing menu items</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TopItemsChart data={todayData.top_income_items} />
-          </CardContent>
-        </Card>
-      </div>
+      {/* Top Items Chart - Full Width */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Top Items</CardTitle>
+          <CardDescription>Best performing menu items</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TopItemsChart data={todayData.top_income_items} />
+        </CardContent>
+      </Card>
 
-      {/* Second Row */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Middle Section - Two Columns */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Expense Breakdown */}
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Expense Breakdown</CardTitle>
@@ -114,6 +114,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Inventory Alerts */}
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Inventory Alerts</CardTitle>
@@ -123,41 +124,47 @@ export default function Dashboard() {
             <InventoryAlerts />
           </CardContent>
         </Card>
-
-        <AIInsightCard />
       </div>
 
-      {/* Quick Actions */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              className="gradient-primary shadow-glow"
-              onClick={() => navigate('/sales/quick')}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Quick Sale
-            </Button>
-            <Button 
-              variant="secondary"
-              onClick={() => navigate('/purchases/new')}
-            >
-              <Package className="mr-2 h-4 w-4" />
-              New Purchase
-            </Button>
-            <Button 
-              variant="secondary"
-              onClick={() => navigate('/expenses/new')}
-            >
-              <Receipt className="mr-2 h-4 w-4" />
-              New Expense
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Bottom Section - Two Columns */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* AI Insights */}
+        <AIInsightCard />
+        
+        {/* Quick Actions */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              <Button 
+                className="gradient-primary shadow-glow justify-start"
+                onClick={() => navigate('/sales/quick')}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Quick Sale
+              </Button>
+              <Button 
+                variant="secondary"
+                className="justify-start"
+                onClick={() => navigate('/purchases/new')}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                New Purchase
+              </Button>
+              <Button 
+                variant="secondary"
+                className="justify-start"
+                onClick={() => navigate('/expenses/new')}
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                New Expense
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Recent Transactions */}
       <RecentTransactions />

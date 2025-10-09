@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -44,7 +44,7 @@ export default function Menu() {
     name: '',
     basePrice: 0,
     category: '',
-    notes: '',
+    active: true,
   });
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [ingredientForm, setIngredientForm] = useState({
@@ -52,8 +52,7 @@ export default function Menu() {
     quantityPerItem: 0,
   });
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
-  const [showMenuConfirmModal, setShowMenuConfirmModal] = useState(false);
-  const [showRecipeConfirmModal, setShowRecipeConfirmModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -96,29 +95,20 @@ export default function Menu() {
     removeIngredientFromRecipe(ingredient.id);
   };
 
-  const saveMenuItem = () => {
-    setShowMenuConfirmModal(false);
+  const saveMenuItemAndRecipe = () => {
+    setShowConfirmModal(false);
     // Mock API call
     setTimeout(() => {
-      setSuccessMessage('Menu item saved successfully');
+      setSuccessMessage('Menu item and recipe saved successfully');
       setShowSuccessModal(true);
       setMenuForm({
         name: '',
         basePrice: 0,
         category: '',
-        notes: '',
+        active: true,
       });
-      setEditingMenuId(null);
-    }, 1000);
-  };
-
-  const saveRecipe = () => {
-    setShowRecipeConfirmModal(false);
-    // Mock API call
-    setTimeout(() => {
-      setSuccessMessage('Recipe saved successfully');
-      setShowSuccessModal(true);
       setRecipeIngredients([]);
+      setEditingMenuId(null);
     }, 1000);
   };
 
@@ -127,7 +117,7 @@ export default function Menu() {
       name: item.name,
       basePrice: item.price,
       category: item.category,
-      notes: '',
+      active: item.active,
     });
     setRecipeIngredients(
       item.recipe.map((ing: any, index: number) => ({
@@ -198,23 +188,22 @@ export default function Menu() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Optional notes about this menu item..."
-                value={menuForm.notes}
-                onChange={(e) => setMenuForm(prev => ({ ...prev, notes: e.target.value }))}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="active">Active</Label>
+              <Switch
+                id="active"
+                checked={menuForm.active}
+                onCheckedChange={(checked) => setMenuForm(prev => ({ ...prev, active: checked }))}
               />
             </div>
 
             <Button 
-              onClick={() => setShowMenuConfirmModal(true)} 
+              onClick={() => setShowConfirmModal(true)} 
               className="w-full gradient-primary"
               disabled={!menuForm.name || menuForm.basePrice <= 0 || !menuForm.category}
             >
               <Save className="mr-2 h-4 w-4" />
-              {editingMenuId ? 'Update Menu Item' : 'Save Menu Item'}
+              Save Menu Item & Recipe
             </Button>
           </CardContent>
         </Card>
@@ -260,53 +249,43 @@ export default function Menu() {
             </Button>
 
             {recipeIngredients.length > 0 && (
-              <>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Ingredient</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Actions</TableHead>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ingredient</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recipeIngredients.map((ingredient) => (
+                      <TableRow key={ingredient.id}>
+                        <TableCell className="font-medium">{ingredient.ingredientName}</TableCell>
+                        <TableCell>{ingredient.quantityPerItem} {ingredient.unit}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => editIngredientInRecipe(ingredient)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeIngredientFromRecipe(ingredient.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recipeIngredients.map((ingredient) => (
-                        <TableRow key={ingredient.id}>
-                          <TableCell className="font-medium">{ingredient.ingredientName}</TableCell>
-                          <TableCell>{ingredient.quantityPerItem} {ingredient.unit}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => editIngredientInRecipe(ingredient)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeIngredientFromRecipe(ingredient.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <Button 
-                  onClick={() => setShowRecipeConfirmModal(true)} 
-                  className="w-full gradient-primary"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Recipe
-                </Button>
-              </>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -326,6 +305,7 @@ export default function Menu() {
                   <TableHead>Category</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Recipe Items</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -336,6 +316,11 @@ export default function Menu() {
                     <TableCell>{item.category}</TableCell>
                     <TableCell>${item.price.toFixed(2)}</TableCell>
                     <TableCell>{item.recipe.length} ingredients</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${item.active ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}>
+                        {item.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -353,40 +338,20 @@ export default function Menu() {
         </CardContent>
       </Card>
 
-      {/* Menu Item Confirmation Modal */}
-      <Dialog open={showMenuConfirmModal} onOpenChange={setShowMenuConfirmModal}>
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Save Menu Item</DialogTitle>
+            <DialogTitle>Confirm Save</DialogTitle>
             <DialogDescription>
-              Are you sure you want to save this menu item?
+              Are you sure you want to save this menu item and its recipe?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMenuConfirmModal(false)}>
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
               Cancel
             </Button>
-            <Button onClick={saveMenuItem} className="gradient-primary">
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Recipe Confirmation Modal */}
-      <Dialog open={showRecipeConfirmModal} onOpenChange={setShowRecipeConfirmModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Save Recipe</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to save this recipe with {recipeIngredients.length} ingredients?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRecipeConfirmModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveRecipe} className="gradient-primary">
+            <Button onClick={saveMenuItemAndRecipe} className="gradient-primary">
               Confirm
             </Button>
           </DialogFooter>

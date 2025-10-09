@@ -72,8 +72,10 @@ export default function Reports() {
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   };
 
   return (
@@ -126,7 +128,7 @@ export default function Reports() {
                   filteredReports.map((report) => (
                     <TableRow key={report.id}>
                       <TableCell className="font-medium">
-                        {formatDate(report.week_start)} - {formatDate(report.week_end)}
+                        {formatDateRange(report.week_start, report.week_end)}
                       </TableCell>
                       <TableCell>{formatCurrency(report.revenue)}</TableCell>
                       <TableCell>{formatCurrency(report.gross_profit)}</TableCell>
@@ -159,6 +161,9 @@ export default function Reports() {
       {/* Sample Report Preview */}
       <Card className="shadow-card">
         <CardHeader>
+          <div className="text-sm text-muted-foreground">
+            {filteredReports.length > 0 && formatDateRange(filteredReports[0].week_start, filteredReports[0].week_end)}
+          </div>
           <CardTitle>Latest Report Analysis</CardTitle>
         </CardHeader>
         <CardContent>
