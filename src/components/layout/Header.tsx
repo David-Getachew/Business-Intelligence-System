@@ -32,7 +32,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           </Button>
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-heading font-bold text-lg">B</span>
+              <span className="text-primary-foreground font-heading font-bold text-lg">S</span>
             </div>
             <h1 className="font-heading font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Sunset sips n' bites

@@ -43,7 +43,7 @@ const App = () => (
               <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
                 <div className="border-t border-border/50 pt-6">
                   <p>
-                    Built by Dawit Getachew — © 2025 Automation & Business Systems ·{' '}
+                    Built by Dawit Getachew — © 2025 Automation & Business Intelligence Systems ·{' '}
                     <a 
                       href="https://github.com/David-Getachew/" 
                       target="_blank" 

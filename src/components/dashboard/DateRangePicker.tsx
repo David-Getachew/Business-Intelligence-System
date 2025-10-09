@@ -4,10 +4,12 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface DateRange {
@@ -26,6 +28,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     from: undefined,
     to: undefined,
   });
+  const [open, setOpen] = useState(false);
 
   const handlePreset = (presetName: string) => {
     setPreset(presetName);
@@ -59,6 +62,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         start: format(selectedDate.from, 'yyyy-MM-dd'),
         end: format(selectedDate.to, 'yyyy-MM-dd'),
       });
+      setOpen(false);
     }
   };
 
@@ -94,8 +98,8 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         >
           This Month
         </Button>
-        <Popover>
-          <PopoverTrigger asChild>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
             <Button
               variant={preset === 'custom' ? 'default' : 'outline'}
               size="sm"
@@ -104,18 +108,20 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               <CalendarIcon className="h-4 w-4" />
               Custom
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Select Date Range</DialogTitle>
+            </DialogHeader>
             <Calendar
               mode="range"
               selected={date}
               onSelect={handleSelect}
               numberOfMonths={2}
               initialFocus
-              className="pointer-events-auto"
             />
-          </PopoverContent>
-        </Popover>
+          </DialogContent>
+        </Dialog>
       </div>
       {value.start && value.end && (
         <p className="text-sm text-muted-foreground">

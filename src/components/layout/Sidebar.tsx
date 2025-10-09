@@ -49,7 +49,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b">
+        <div className="flex h-16 items-center justify-between px-4 border-b md:hidden">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-heading font-bold text-lg">S</span>
@@ -86,17 +86,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
-
-        <div className="p-4 border-t">
-          <div className="rounded-lg bg-secondary/50 p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Dev Mode Active
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Using mock data. API integration pending.
-            </p>
-          </div>
-        </div>
       </aside>
     </>
   );

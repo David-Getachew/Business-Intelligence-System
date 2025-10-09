@@ -209,7 +209,7 @@ export default function Transactions() {
                         <TableHead>Category</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Reference</TableHead>
-                        <TableHead>Notes</TableHead>
+                        {/* Notes column removed from default view */}
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -220,7 +220,7 @@ export default function Transactions() {
                           <TableCell className="font-medium">{expense.category}</TableCell>
                           <TableCell>${expense.amount.toFixed(2)}</TableCell>
                           <TableCell>{expense.reference || '-'}</TableCell>
-                          <TableCell>{expense.notes || '-'}</TableCell>
+                          {/* Notes column removed from default view */}
                           <TableCell>
                             <div className="flex gap-2">
                               <Tooltip>
