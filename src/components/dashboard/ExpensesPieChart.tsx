@@ -25,10 +25,10 @@ export function ExpensesPieChart() {
           cx="50%"
           cy="50%"
           labelLine={false}
-          label={(entry) => `${entry.name}: $${entry.value}`}
           outerRadius={80}
           fill="#8884d8"
           dataKey="value"
+          label={false}
         >
           {mockExpenseData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -41,6 +41,7 @@ export function ExpensesPieChart() {
             borderRadius: '8px',
           }}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']}
+          itemStyle={{ color: 'hsl(var(--foreground))' }}
         />
         <Legend 
           layout="vertical" 

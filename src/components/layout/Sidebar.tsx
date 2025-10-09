@@ -45,18 +45,23 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-[calc(100vh-4rem)]',
+          'fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b md:hidden">
+        <div className="flex h-16 items-center justify-between px-4 border-b">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-heading font-bold text-lg">B</span>
+              <span className="text-primary-foreground font-heading font-bold text-lg">S</span>
             </div>
             <h1 className="font-heading font-bold text-xl">Sunset sips n' bites</h1>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            className="md:hidden"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>

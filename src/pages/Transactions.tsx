@@ -90,7 +90,7 @@ export default function Transactions() {
                       <TableHead>Date</TableHead>
                       <TableHead>Menu Item</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Price</TableHead>
+                      {/* Unit Price hidden in default view */}
                       <TableHead>Total</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -101,7 +101,7 @@ export default function Transactions() {
                         <TableCell>{formatDate(sale.sale_date)}</TableCell>
                         <TableCell className="font-medium">{sale.menu_item}</TableCell>
                         <TableCell>{sale.quantity}</TableCell>
-                        <TableCell>${sale.unit_price.toFixed(2)}</TableCell>
+                        {/* Unit Price hidden in default view */}
                         <TableCell>${sale.total.toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -136,9 +136,8 @@ export default function Transactions() {
                       <TableHead>Date</TableHead>
                       <TableHead>Ingredient</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Cost</TableHead>
+                      {/* Unit Cost and Supplier hidden in default view */}
                       <TableHead>Total Cost</TableHead>
-                      <TableHead>Supplier</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -148,9 +147,8 @@ export default function Transactions() {
                         <TableCell>{formatDate(purchase.purchase_date)}</TableCell>
                         <TableCell className="font-medium">{purchase.ingredient}</TableCell>
                         <TableCell>{purchase.quantity}</TableCell>
-                        <TableCell>${purchase.unit_cost.toFixed(2)}</TableCell>
+                        {/* Unit Cost and Supplier hidden in default view */}
                         <TableCell>${purchase.total_cost.toFixed(2)}</TableCell>
-                        <TableCell>{purchase.supplier}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button

@@ -25,19 +25,56 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
-            <Route path="/sales/quick" element={<MainLayout><QuickSales /></MainLayout>} />
-            <Route path="/purchases/new" element={<MainLayout><Purchases /></MainLayout>} />
-            <Route path="/expenses/new" element={<MainLayout><Expenses /></MainLayout>} />
-            <Route path="/menu" element={<MainLayout><Menu /></MainLayout>} />
-            <Route path="/inventory" element={<MainLayout><Inventory /></MainLayout>} />
-            <Route path="/transactions" element={<MainLayout><Transactions /></MainLayout>} />
-            <Route path="/reports" element={<MainLayout><Reports /></MainLayout>} />
-            <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="flex flex-col min-h-screen">
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
+              <Route path="/sales/quick" element={<MainLayout><QuickSales /></MainLayout>} />
+              <Route path="/purchases/new" element={<MainLayout><Purchases /></MainLayout>} />
+              <Route path="/expenses/new" element={<MainLayout><Expenses /></MainLayout>} />
+              <Route path="/menu" element={<MainLayout><Menu /></MainLayout>} />
+              <Route path="/inventory" element={<MainLayout><Inventory /></MainLayout>} />
+              <Route path="/transactions" element={<MainLayout><Transactions /></MainLayout>} />
+              <Route path="/reports" element={<MainLayout><Reports /></MainLayout>} />
+              <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <footer className="mt-auto py-6 border-t">
+              <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+                <div className="border-t border-border/50 pt-6">
+                  <p>
+                    Built by Dawit Getachew — © 2025 Automation & Business Systems ·{' '}
+                    <a 
+                      href="https://github.com/David-Getachew/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      GitHub
+                    </a>
+                    {' · '}
+                    <a 
+                      href="https://www.linkedin.com/in/dawit-getachew-mekonen" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      LinkedIn
+                    </a>
+                    {' · '}
+                    <a 
+                      href="https://www.davidgetachew.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Website
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </footer>
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

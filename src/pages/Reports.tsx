@@ -109,35 +109,29 @@ export default function Reports() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Week Period</TableHead>
+                  <TableHead className="w-1/3">Week Period</TableHead>
                   <TableHead>Revenue</TableHead>
                   <TableHead>Gross Profit</TableHead>
                   <TableHead>Net Profit</TableHead>
-                  <TableHead>Analysis Preview</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredReports.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       No reports found for the selected date range
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredReports.map((report) => (
                     <TableRow key={report.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium w-1/3">
                         {formatDateRange(report.week_start, report.week_end)}
                       </TableCell>
                       <TableCell>{formatCurrency(report.revenue)}</TableCell>
                       <TableCell>{formatCurrency(report.gross_profit)}</TableCell>
                       <TableCell>{formatCurrency(report.net_profit)}</TableCell>
-                      <TableCell className="max-w-xs">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {report.analysis.substring(0, 80)}...
-                        </p>
-                      </TableCell>
                       <TableCell>
                         <Button
                           variant="outline"

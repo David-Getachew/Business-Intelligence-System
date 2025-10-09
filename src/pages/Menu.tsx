@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, UtensilsCrossed, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ interface RecipeIngredient {
 }
 
 export default function Menu() {
+  const formRef = useRef<HTMLDivElement>(null);
   const [menuForm, setMenuForm] = useState({
     name: '',
     basePrice: 0,
@@ -57,6 +58,13 @@ export default function Menu() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const categories = ['Pizza', 'Burgers', 'Salads', 'Pasta', 'Beverages', 'Desserts'];
+
+  // Auto-scroll to form when editing
+  useEffect(() => {
+    if (editingMenuId && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingMenuId]);
 
   const addIngredientToRecipe = () => {
     if (!ingredientForm.ingredientName || ingredientForm.quantityPerItem <= 0) {
@@ -130,6 +138,11 @@ export default function Menu() {
     setEditingMenuId(item.id);
   };
 
+  const toggleMenuItemActive = (id: string, currentStatus: boolean) => {
+    // In a real app, this would make an API call
+    toast.success(`Menu item ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -139,156 +152,149 @@ export default function Menu() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Menu Item Form */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UtensilsCrossed className="h-5 w-5" />
-              {editingMenuId ? 'Edit Menu Item' : 'Add Menu Item'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="menuName">Menu Item Name *</Label>
-              <Input
-                id="menuName"
-                value={menuForm.name}
-                onChange={(e) => setMenuForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter menu item name"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+      <div ref={formRef}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Menu Item Form */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5" />
+                {editingMenuId ? 'Edit Menu Item' : 'Add Menu Item'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="basePrice">Base Price *</Label>
+                <Label htmlFor="menuName">Menu Item Name *</Label>
                 <Input
-                  id="basePrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={menuForm.basePrice}
-                  onChange={(e) => setMenuForm(prev => ({ ...prev, basePrice: parseFloat(e.target.value) || 0 }))}
+                  id="menuName"
+                  value={menuForm.name}
+                  onChange={(e) => setMenuForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter menu item name"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select value={menuForm.category} onValueChange={(value) => setMenuForm(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="basePrice">Base Price *</Label>
+                  <Input
+                    id="basePrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={menuForm.basePrice}
+                    onChange={(e) => setMenuForm(prev => ({ ...prev, basePrice: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={menuForm.category} onValueChange={(value) => setMenuForm(prev => ({ ...prev, category: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active">Active</Label>
-              <Switch
-                id="active"
-                checked={menuForm.active}
-                onCheckedChange={(checked) => setMenuForm(prev => ({ ...prev, active: checked }))}
-              />
-            </div>
+              <Button 
+                onClick={() => setShowConfirmModal(true)} 
+                className="w-full gradient-primary"
+                disabled={!menuForm.name || menuForm.basePrice <= 0 || !menuForm.category}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Save Menu Item & Recipe
+              </Button>
+            </CardContent>
+          </Card>
 
-            <Button 
-              onClick={() => setShowConfirmModal(true)} 
-              className="w-full gradient-primary"
-              disabled={!menuForm.name || menuForm.basePrice <= 0 || !menuForm.category}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Menu Item & Recipe
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Recipe Editor */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Recipe Editor</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ingredientName">Ingredient *</Label>
-                <Select value={ingredientForm.ingredientName} onValueChange={(value) => setIngredientForm(prev => ({ ...prev, ingredientName: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select ingredient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockIngredients.map((ingredient) => (
-                      <SelectItem key={ingredient.id} value={ingredient.name}>
-                        {ingredient.name} ({ingredient.unit})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Recipe Editor */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Recipe Editor</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ingredientName">Ingredient *</Label>
+                  <Select value={ingredientForm.ingredientName} onValueChange={(value) => setIngredientForm(prev => ({ ...prev, ingredientName: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select ingredient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockIngredients.map((ingredient) => (
+                        <SelectItem key={ingredient.id} value={ingredient.name}>
+                          {ingredient.name} ({ingredient.unit})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantityPerItem">Quantity per Item *</Label>
+                  <Input
+                    id="quantityPerItem"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={ingredientForm.quantityPerItem}
+                    onChange={(e) => setIngredientForm(prev => ({ ...prev, quantityPerItem: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantityPerItem">Quantity per Item *</Label>
-                <Input
-                  id="quantityPerItem"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={ingredientForm.quantityPerItem}
-                  onChange={(e) => setIngredientForm(prev => ({ ...prev, quantityPerItem: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
 
-            <Button onClick={addIngredientToRecipe} className="w-full" variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Ingredient
-            </Button>
+              <Button onClick={addIngredientToRecipe} className="w-full" variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Ingredient
+              </Button>
 
-            {recipeIngredients.length > 0 && (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ingredient</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recipeIngredients.map((ingredient) => (
-                      <TableRow key={ingredient.id}>
-                        <TableCell className="font-medium">{ingredient.ingredientName}</TableCell>
-                        <TableCell>{ingredient.quantityPerItem} {ingredient.unit}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => editIngredientInRecipe(ingredient)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeIngredientFromRecipe(ingredient.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              {recipeIngredients.length > 0 && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ingredient</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {recipeIngredients.map((ingredient) => (
+                        <TableRow key={ingredient.id}>
+                          <TableCell className="font-medium">{ingredient.ingredientName}</TableCell>
+                          <TableCell>{ingredient.quantityPerItem} {ingredient.unit}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => editIngredientInRecipe(ingredient)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeIngredientFromRecipe(ingredient.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Existing Menu Items */}
@@ -317,9 +323,10 @@ export default function Menu() {
                     <TableCell>${item.price.toFixed(2)}</TableCell>
                     <TableCell>{item.recipe.length} ingredients</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${item.active ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}>
-                        {item.active ? 'Active' : 'Inactive'}
-                      </span>
+                      <Switch
+                        checked={item.active}
+                        onCheckedChange={(checked) => toggleMenuItemActive(item.id, checked)}
+                      />
                     </TableCell>
                     <TableCell>
                       <Button

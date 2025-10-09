@@ -52,7 +52,6 @@ export default function Inventory() {
   
   const [reorderForm, setReorderForm] = useState({
     suggestedQty: 0,
-    notes: '',
   });
   
   const [adjustForm, setAdjustForm] = useState({
@@ -92,7 +91,6 @@ export default function Inventory() {
     const suggestedQty = Math.max(item.reorder_point * 2, 10);
     setReorderForm({
       suggestedQty,
-      notes: '',
     });
     setShowReorderModal(true);
   };
@@ -131,7 +129,7 @@ export default function Inventory() {
 
   const getStockStatus = (item: any) => {
     if (item.qty_on_hand <= 0) return { status: 'Out of Stock', variant: 'destructive' as const };
-    if (item.qty_on_hand < item.reorder_point) return { status: 'Low Stock', variant: 'warning' as const };
+    if (item.qty_on_hand < item.reorder_point) return { status: 'Low Stock', variant: 'destructive' as const };
     return { status: 'In Stock', variant: 'success' as const };
   };
 
@@ -315,14 +313,6 @@ export default function Inventory() {
             <div className="space-y-2">
               <Label>Supplier Contact</Label>
               <Input value="Mock Supplier - (555) 123-4567" readOnly className="bg-muted" />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input
-                placeholder="Optional notes for the supplier..."
-                value={reorderForm.notes}
-                onChange={(e) => setReorderForm(prev => ({ ...prev, notes: e.target.value }))}
-              />
             </div>
           </div>
           <DialogFooter>
