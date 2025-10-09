@@ -1,16 +1,24 @@
 import { useState } from 'react';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
 interface DateRange {
   start: string;
@@ -24,11 +32,15 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [preset, setPreset] = useState('today');
-  const [date, setDate] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined,
-  });
   const [open, setOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    value.start ? new Date(value.start) : undefined
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    value.end ? new Date(value.end) : undefined
+  );
+  const [startOpen, setStartOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
 
   const handlePreset = (presetName: string) => {
     setPreset(presetName);
@@ -48,36 +60,44 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         break;
     }
 
+    const startDateStr = format(start, 'yyyy-MM-dd');
+    const endDateStr = format(end, 'yyyy-MM-dd');
+    
+    setStartDate(start);
+    setEndDate(end);
     onChange({
-      start: format(start, 'yyyy-MM-dd'),
-      end: format(end, 'yyyy-MM-dd'),
+      start: startDateStr,
+      end: endDateStr,
     });
   };
 
-  const handleSelect = (selectedDate: { from: Date | undefined; to: Date | undefined }) => {
-    setDate(selectedDate);
-    if (selectedDate.from && selectedDate.to) {
+  const handleApply = () => {
+    if (startDate && endDate) {
       setPreset('custom');
       onChange({
-        start: format(selectedDate.from, 'yyyy-MM-dd'),
-        end: format(selectedDate.to, 'yyyy-MM-dd'),
+        start: format(startDate, 'yyyy-MM-dd'),
+        end: format(endDate, 'yyyy-MM-dd'),
       });
-      setOpen(false);
     }
+    setOpen(false);
   };
 
   const clearFilter = () => {
     setPreset('today');
-    setDate({ from: undefined, to: undefined });
+    setStartDate(undefined);
+    setEndDate(undefined);
     onChange({ start: '', end: '' });
   };
 
   const formatDateRange = () => {
     if (!value.start || !value.end) return '';
-    if (value.start === value.end) {
-      return format(new Date(value.start), 'MMM d, yyyy');
+    const startDate = new Date(value.start);
+    const endDate = new Date(value.end);
+    
+    if (startDate.toDateString() === endDate.toDateString()) {
+      return startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-    return `${format(new Date(value.start), 'MMM d, yyyy')} - ${format(new Date(value.end), 'MMM d, yyyy')}`;
+    return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   };
 
   return (
@@ -118,21 +138,87 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Select Date Range</DialogTitle>
+              <DialogDescription>
+                Choose a start and end date for your report
+              </DialogDescription>
             </DialogHeader>
-            <Calendar
-              mode="range"
-              selected={date}
-              onSelect={handleSelect}
-              numberOfMonths={2}
-              initialFocus
-              className="[&_.rdp-day_selected]:bg-primary [&_.rdp-day_selected]:text-primary-foreground [&_.rdp-day_selected]:opacity-100 [&_.rdp-day_selected]:hover:bg-primary [&_.rdp-day_selected]:hover:text-primary-foreground"
-            />
-            <div className="flex justify-end gap-2">
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="start-date" className="text-sm font-medium">
+                  Start Date
+                </label>
+                <Popover open={startOpen} onOpenChange={setStartOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        if (date && endDate && date > endDate) {
+                          setEndDate(date);
+                        }
+                        setStartOpen(false);
+                      }}
+                      initialFocus
+                      className="rounded-md border"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="end-date" className="text-sm font-medium">
+                  End Date
+                </label>
+                <Popover open={endOpen} onOpenChange={setEndOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                      disabled={!startDate}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        setEndDate(date);
+                        setEndOpen(false);
+                      }}
+                      initialFocus
+                      className="rounded-md border"
+                      disabled={(date) => startDate ? date < startDate : false}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <DialogFooter>
               <Button variant="outline" onClick={clearFilter}>
                 Clear
               </Button>
-              <Button onClick={() => setOpen(false)}>Apply</Button>
-            </div>
+              <Button onClick={handleApply} disabled={!startDate || !endDate}>
+                Apply
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         {value.start && value.end && (
@@ -142,7 +228,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
             onClick={clearFilter}
             className="h-8 w-8 p-0"
           >
-            <X className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
         )}
       </div>

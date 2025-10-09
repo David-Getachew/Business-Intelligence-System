@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { FileText, Download, Calendar, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -19,15 +18,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { mockWeeklySummaries } from '@/mocks/summaries';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function Reports() {
-  const [dateFilter, setDateFilter] = useState({
-    startDate: '',
-    endDate: '',
-  });
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [startOpen, setStartOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filteredReports, setFilteredReports] = useState(mockWeeklySummaries);
 
@@ -45,13 +53,13 @@ export default function Reports() {
   };
 
   const applyDateFilter = () => {
-    if (!dateFilter.startDate && !dateFilter.endDate) {
+    if (!startDate && !endDate) {
       setFilteredReports(mockWeeklySummaries);
     } else {
       const filtered = mockWeeklySummaries.filter(report => {
         const reportStart = new Date(report.week_start);
-        const filterStart = dateFilter.startDate ? new Date(dateFilter.startDate) : new Date('1900-01-01');
-        const filterEnd = dateFilter.endDate ? new Date(dateFilter.endDate) : new Date('2100-12-31');
+        const filterStart = startDate || new Date('1900-01-01');
+        const filterEnd = endDate || new Date('2100-12-31');
         
         return reportStart >= filterStart && reportStart <= filterEnd;
       });
@@ -62,7 +70,8 @@ export default function Reports() {
   };
 
   const clearFilter = () => {
-    setDateFilter({ startDate: '', endDate: '' });
+    setStartDate(undefined);
+    setEndDate(undefined);
     setFilteredReports(mockWeeklySummaries);
     setShowFilterModal(false);
     toast.success('Filter cleared');
@@ -87,14 +96,99 @@ export default function Reports() {
             Weekly business performance reports with AI insights
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowFilterModal(true)}
-          className="flex items-center gap-2"
-        >
-          <Filter className="h-4 w-4" />
-          Filter by Date
-        </Button>
+        <Dialog open={showFilterModal} onOpenChange={setShowFilterModal}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Filter by Date
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Filter Reports by Date</DialogTitle>
+              <DialogDescription>
+                Select a date range to filter the reports
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="start-date" className="text-sm font-medium">
+                  Start Date
+                </Label>
+                <Popover open={startOpen} onOpenChange={setStartOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        if (date && endDate && date > endDate) {
+                          setEndDate(date);
+                        }
+                        setStartOpen(false);
+                      }}
+                      initialFocus
+                      className="rounded-md border"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-date" className="text-sm font-medium">
+                  End Date
+                </Label>
+                <Popover open={endOpen} onOpenChange={setEndOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                      disabled={!startDate}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        setEndDate(date);
+                        setEndOpen(false);
+                      }}
+                      initialFocus
+                      className="rounded-md border"
+                      disabled={(date) => startDate ? date < startDate : false}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={clearFilter}>
+                Clear Filter
+              </Button>
+              <Button onClick={applyDateFilter} disabled={!startDate || !endDate}>
+                Apply Filter
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="shadow-card">
@@ -189,48 +283,6 @@ export default function Reports() {
           )}
         </CardContent>
       </Card>
-
-      {/* Filter Modal */}
-      <Dialog open={showFilterModal} onOpenChange={setShowFilterModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Filter Reports by Date</DialogTitle>
-            <DialogDescription>
-              Select a date range to filter the reports
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={dateFilter.startDate}
-                  onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={dateFilter.endDate}
-                  onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={clearFilter}>
-              Clear Filter
-            </Button>
-            <Button onClick={applyDateFilter} className="gradient-primary">
-              Apply Filter
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

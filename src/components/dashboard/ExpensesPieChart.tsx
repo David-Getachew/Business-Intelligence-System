@@ -1,4 +1,4 @@
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Label } from 'recharts';
 
 const mockExpenseData = [
   { name: 'Rent', value: 2500 },
@@ -37,10 +37,33 @@ export function ExpensesPieChart() {
             paddingAngle={2}
             dataKey="value"
             labelLine={true}
-            label={({ name, percentage }) => `${name}: ${percentage}%`}
+            label={({ name, percentage, cx, cy, midAngle, outerRadius }) => {
+              const RADIAN = Math.PI / 180;
+              const radius = outerRadius + 20;
+              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+              
+              return (
+                <text 
+                  x={x} 
+                  y={y} 
+                  fill="hsl(var(--foreground))" 
+                  textAnchor={x > cx ? 'start' : 'end'} 
+                  dominantBaseline="central"
+                  fontSize={12}
+                >
+                  {`${name}: ${percentage}%`}
+                </text>
+              );
+            }}
           >
             {dataWithPercentages.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={COLORS[index % COLORS.length]} 
+                stroke="hsl(var(--border))"
+                strokeWidth={0.5}
+              />
             ))}
           </Pie>
           <Tooltip
@@ -52,21 +75,25 @@ export function ExpensesPieChart() {
             formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']}
             itemStyle={{ color: 'hsl(var(--foreground))' }}
           />
-          <Legend 
-            layout="horizontal" 
-            verticalAlign="bottom" 
-            align="center"
-            wrapperStyle={{ paddingTop: '20px' }}
-            formatter={(value, entry, index) => (
-              <span className="text-sm dark:text-gray-300">{value}</span>
-            )}
+          <Label
+            content={({ viewBox }) => {
+              if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                return (
+                  <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                    <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-2xl font-bold">
+                      ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </tspan>
+                    <tspan x={viewBox.cx} y={viewBox.cy + 20} className="fill-muted-foreground text-sm">
+                      Total Expenses
+                    </tspan>
+                  </text>
+                );
+              }
+              return null;
+            }}
           />
         </PieChart>
       </ResponsiveContainer>
-      <div className="text-center mt-4">
-        <p className="text-sm text-muted-foreground">Total Expenses</p>
-        <p className="text-xl font-bold">${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-      </div>
     </div>
   );
 }

@@ -27,6 +27,17 @@ export default function Dashboard() {
     netProfit: todayData.net_profit,
   };
 
+  const formatDateRange = () => {
+    if (!dateRange.start || !dateRange.end) return '';
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    
+    if (startDate.toDateString() === endDate.toDateString()) {
+      return `Range Selected -- ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+    return `Range Selected -- ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Date Range */}
@@ -42,8 +53,7 @@ export default function Dashboard() {
         </div>
         {dateRange.start && dateRange.end && (
           <p className="text-sm text-muted-foreground mt-2">
-            {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} -{' '}
-            {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {formatDateRange()}
           </p>
         )}
       </div>
@@ -139,9 +149,7 @@ export default function Dashboard() {
         {/* AI Insights */}
         <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>Latest Week</span>
-            </CardTitle>
+            <CardTitle>AI Insights</CardTitle>
           </CardHeader>
           <CardContent>
             <AIInsightCard />
