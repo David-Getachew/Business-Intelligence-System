@@ -30,14 +30,22 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header with Date Range */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-heading font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Overview of your business performance
-          </p>
+      <div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-heading font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Overview of your business performance
+            </p>
+          </div>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        {dateRange.start && dateRange.end && (
+          <p className="text-sm text-muted-foreground mt-2">
+            {new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} -{' '}
+            {new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -129,7 +137,16 @@ export default function Dashboard() {
       {/* Bottom Section - Two Columns */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* AI Insights */}
-        <AIInsightCard />
+        <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>Latest Week</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AIInsightCard />
+          </CardContent>
+        </Card>
         
         {/* Quick Actions */}
         <Card className="shadow-card">

@@ -141,7 +141,6 @@ export default function Settings() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -165,11 +164,6 @@ export default function Settings() {
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(user.created_at)}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.active ? 'success' : 'destructive'}>
-                        {user.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -341,7 +335,7 @@ export default function Settings() {
                 {selectedUser?.role}
               </Badge>
             </div>
-            <div className="space-y-2">
+            <div className="pt-2">
               <Label>New Role</Label>
               <Select onValueChange={updateUserRole}>
                 <SelectTrigger>

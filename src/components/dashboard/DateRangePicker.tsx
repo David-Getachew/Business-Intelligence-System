@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -66,6 +66,12 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     }
   };
 
+  const clearFilter = () => {
+    setPreset('today');
+    setDate({ from: undefined, to: undefined });
+    onChange({ start: '', end: '' });
+  };
+
   const formatDateRange = () => {
     if (!value.start || !value.end) return '';
     if (value.start === value.end) {
@@ -119,9 +125,26 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               onSelect={handleSelect}
               numberOfMonths={2}
               initialFocus
+              className="[&_.rdp-day_selected]:bg-primary [&_.rdp-day_selected]:text-primary-foreground [&_.rdp-day_selected]:opacity-100 [&_.rdp-day_selected]:hover:bg-primary [&_.rdp-day_selected]:hover:text-primary-foreground"
             />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={clearFilter}>
+                Clear
+              </Button>
+              <Button onClick={() => setOpen(false)}>Apply</Button>
+            </div>
           </DialogContent>
         </Dialog>
+        {value.start && value.end && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilter}
+            className="h-8 w-8 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       {value.start && value.end && (
         <p className="text-sm text-muted-foreground">

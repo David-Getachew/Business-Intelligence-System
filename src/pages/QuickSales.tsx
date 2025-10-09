@@ -36,7 +36,6 @@ interface SaleItem {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
-  paymentMethod: string;
 }
 
 export default function QuickSales() {
@@ -44,7 +43,6 @@ export default function QuickSales() {
     itemName: '',
     quantity: 1,
     unitPrice: 0,
-    paymentMethod: '',
   });
   const [batch, setBatch] = useState<SaleItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,7 +62,7 @@ export default function QuickSales() {
   };
 
   const addToBatch = () => {
-    if (!formData.itemName || formData.quantity <= 0 || formData.unitPrice <= 0 || !formData.paymentMethod) {
+    if (!formData.itemName || formData.quantity <= 0 || formData.unitPrice <= 0) {
       toast.error('Please fill all required fields with valid values');
       return;
     }
@@ -75,7 +73,6 @@ export default function QuickSales() {
       quantity: formData.quantity,
       unitPrice: formData.unitPrice,
       lineTotal: lineTotal,
-      paymentMethod: formData.paymentMethod,
     };
 
     if (editingId) {
@@ -89,7 +86,6 @@ export default function QuickSales() {
       itemName: '',
       quantity: 1,
       unitPrice: 0,
-      paymentMethod: '',
     });
     toast.success('Item added to batch');
   };
@@ -99,7 +95,6 @@ export default function QuickSales() {
       itemName: item.itemName,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      paymentMethod: item.paymentMethod,
     });
     setEditingId(item.id);
   };
@@ -115,7 +110,6 @@ export default function QuickSales() {
       itemName: '',
       quantity: 1,
       unitPrice: 0,
-      paymentMethod: '',
     });
     setEditingId(null);
     toast.success('Batch cleared');
@@ -131,7 +125,6 @@ export default function QuickSales() {
         itemName: '',
         quantity: 1,
         unitPrice: 0,
-        paymentMethod: '',
       });
     }, 1000);
   };
@@ -205,20 +198,6 @@ export default function QuickSales() {
                 readOnly
                 className="bg-muted"
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Select value={formData.paymentMethod} onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">
