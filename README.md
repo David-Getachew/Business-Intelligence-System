@@ -1,8 +1,8 @@
-# Business Intelligence System - Frontend Template
+# Business Intelligence System - Frontend Only
 
 ## Overview
 
-Business Intelligence System is a comprehensive frontend template designed for small to medium-sized businesses, particularly restaurants and cafes. This repository contains the **frontend only** - a fully functional React application with mock data that demonstrates the complete user interface and experience.
+Business Intelligence System is a comprehensive frontend-only template designed by me for small to medium-sized businesses, particularly restaurants and cafes. This repository contains the **frontend only** - a fully functional React application with mock data that demonstrates the complete user interface and experience.
 
 **Important Note**: This is a frontend template only. No backend integrations have been implemented yet. All data is mocked for demonstration purposes.
 
