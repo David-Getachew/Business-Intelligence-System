@@ -34,7 +34,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-heading font-bold text-lg">S</span>
             </div>
-            <h1 className="font-heading font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1 className="font-heading font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block">
               Sunset sips n' bites
             </h1>
           </div>
@@ -58,7 +58,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback className="gradient-primary text-primary-foreground">
+                  <AvatarFallback className="gradient-primary text-primary-foreground flex items-center justify-center">
                     SJ
                   </AvatarFallback>
                 </Avatar>
