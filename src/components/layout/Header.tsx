@@ -56,9 +56,9 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback className="gradient-primary text-primary-foreground flex items-center justify-center">
+                  <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground font-heading font-bold flex items-center justify-center">
                     SJ
                   </AvatarFallback>
                 </Avatar>
