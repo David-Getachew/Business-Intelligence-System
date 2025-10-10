@@ -39,7 +39,7 @@ export function ExpensesPieChart() {
             labelLine={true}
             label={({ name, percentage, cx, cy, midAngle, outerRadius }) => {
               const RADIAN = Math.PI / 180;
-              const radius = outerRadius + 20;
+              const radius = outerRadius + 25;
               const x = cx + radius * Math.cos(-midAngle * RADIAN);
               const y = cy + radius * Math.sin(-midAngle * RADIAN);
               
@@ -62,8 +62,7 @@ export function ExpensesPieChart() {
               <Cell 
                 key={`cell-${index}`} 
                 fill={COLORS[index % COLORS.length]} 
-                stroke="hsl(var(--border))"
-                strokeWidth={0.5}
+                stroke="none"
               />
             ))}
           </Pie>
@@ -81,10 +80,10 @@ export function ExpensesPieChart() {
               if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
                 return (
                   <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                    <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-2xl font-bold">
+                    <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 8} className="fill-foreground text-2xl font-bold">
                       ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </tspan>
-                    <tspan x={viewBox.cx} y={viewBox.cy + 20} className="fill-muted-foreground text-sm">
+                    <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 16} className="fill-muted-foreground text-sm">
                       Total Expenses
                     </tspan>
                   </text>

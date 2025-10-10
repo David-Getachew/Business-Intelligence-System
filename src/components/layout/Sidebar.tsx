@@ -45,7 +45,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-[calc(100vh-4rem)]',
+          'fixed top-0 left-0 z-50 h-screen w-64 bg-card border-r transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-screen',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -66,25 +66,27 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              onClick={() => onClose?.()}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                  isActive
-                    ? 'gradient-primary text-primary-foreground shadow-glow'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                )
-              }
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </NavLink>
-          ))}
+        <nav className="flex flex-col h-full px-3 py-4 overflow-hidden">
+          <div className="flex flex-col space-y-1">
+            {navigation.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                onClick={() => onClose?.()}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                    isActive
+                      ? 'gradient-primary text-primary-foreground shadow-glow'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                {item.name}
+              </NavLink>
+            ))}
+          </div>
         </nav>
       </aside>
     </>

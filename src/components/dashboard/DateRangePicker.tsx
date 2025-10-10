@@ -18,7 +18,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 
 interface DateRange {
   start: string;
@@ -87,17 +86,6 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     setStartDate(undefined);
     setEndDate(undefined);
     onChange({ start: '', end: '' });
-  };
-
-  const formatDateRange = () => {
-    if (!value.start || !value.end) return '';
-    const startDate = new Date(value.start);
-    const endDate = new Date(value.end);
-    
-    if (startDate.toDateString() === endDate.toDateString()) {
-      return startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   };
 
   return (
@@ -232,11 +220,6 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           </Button>
         )}
       </div>
-      {value.start && value.end && (
-        <p className="text-sm text-muted-foreground">
-          {formatDateRange()}
-        </p>
-      )}
     </div>
   );
 }

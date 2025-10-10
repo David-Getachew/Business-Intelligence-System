@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Edit, Trash2, ShoppingCart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ interface SaleItem {
 }
 
 export default function QuickSales() {
+  const formRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     itemName: '',
     quantity: 1,
@@ -51,6 +52,13 @@ export default function QuickSales() {
 
   const selectedItem = mockMenuItems.find(item => item.name === formData.itemName);
   const lineTotal = formData.quantity * formData.unitPrice;
+
+  // Auto-scroll to form when editing
+  useEffect(() => {
+    if (editingId && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingId]);
 
   const handleItemSelect = (itemName: string) => {
     const item = mockMenuItems.find(item => item.name === itemName);
@@ -142,7 +150,7 @@ export default function QuickSales() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Sales Form */}
-        <Card className="shadow-card">
+        <Card className="shadow-card" ref={formRef}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />

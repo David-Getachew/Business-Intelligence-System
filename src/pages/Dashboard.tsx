@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, ShoppingCart, Package, Receipt, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ShoppingCart, Package, Receipt, TrendingUp, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/dashboard/DateRangePicker';
@@ -149,7 +149,10 @@ export default function Dashboard() {
         {/* AI Insights */}
         <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardHeader>
-            <CardTitle>AI Insights</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="text-primary">AI Insights</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <AIInsightCard />

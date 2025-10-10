@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Edit, Trash2, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ const expenseCategories = {
 };
 
 export default function Expenses() {
+  const formRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     category: '',
     subcategory: '',
@@ -59,6 +60,13 @@ export default function Expenses() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const subcategoryOptions = formData.category ? expenseCategories[formData.category as keyof typeof expenseCategories] || [] : [];
+
+  // Auto-scroll to form when editing
+  useEffect(() => {
+    if (editingId && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingId]);
 
   const addToBatch = () => {
     if (!formData.category || formData.amount <= 0) {
@@ -145,7 +153,7 @@ export default function Expenses() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Expense Form */}
-        <Card className="shadow-card">
+        <Card className="shadow-card" ref={formRef}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />

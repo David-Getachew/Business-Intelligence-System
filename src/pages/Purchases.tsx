@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ interface PurchaseItem {
 }
 
 export default function Purchases() {
+  const formRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     ingredientName: '',
     quantity: 1,
@@ -50,6 +51,13 @@ export default function Purchases() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const totalCost = formData.quantity * formData.unitCost;
+
+  // Auto-scroll to form when editing
+  useEffect(() => {
+    if (editingId && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingId]);
 
   const addToBatch = () => {
     if (!formData.ingredientName || formData.quantity <= 0 || formData.unitCost <= 0) {
@@ -132,7 +140,7 @@ export default function Purchases() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Purchase Form */}
-        <Card className="shadow-card">
+        <Card className="shadow-card" ref={formRef}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
