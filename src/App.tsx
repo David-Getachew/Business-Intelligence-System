@@ -41,7 +41,7 @@ const App = () => (
               <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <footer className="mt-auto py-6 border-t">
+            <footer className="mt-auto py-6 border-t mobile-footer-padding">
               <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
                 <div className="border-t border-border/50 pt-6">
                   <p>
