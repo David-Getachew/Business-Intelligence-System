@@ -23,7 +23,7 @@ export function TopItemsChart({ data }: TopItemsChartProps) {
               border: '1px solid hsl(var(--border))',
               borderRadius: '8px',
             }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
+            formatter={(value: number) => [`${value.toFixed(2)} Birr`, 'Revenue']}
             labelFormatter={(name) => name}
           />
           <Bar

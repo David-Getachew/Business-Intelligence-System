@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, UtensilsCrossed, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, UtensilsCrossed, Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -29,19 +30,27 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { mockMenuItems } from '@/mocks/menuItems';
-import { mockIngredients } from '@/mocks/ingredients';
+import { fetchMenuItems, fetchIngredients, saveMenuItem, fetchMenuIngredientCounts, fetchMenuItemRecipeFromView } from '@/api/index';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, formatCurrencyDisplay } from '@/utils/formatCurrency';
 import { toast } from 'sonner';
 
 interface RecipeIngredient {
   id: string;
+  ingredient_id: number;  // INTEGER per schema
   ingredientName: string;
-  quantityPerItem: number;
-  unit: string;
+  quantityPerItem: number;  // Will map to qty_per_item
+  unit: string;             // Display only (base_unit from join)
 }
 
 export default function Menu() {
   const formRef = useRef<HTMLDivElement>(null);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [menuForm, setMenuForm] = useState({
     name: '',
     basePrice: 0,
@@ -51,15 +60,38 @@ export default function Menu() {
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [ingredientForm, setIngredientForm] = useState({
     ingredientName: '',
-    quantityPerItem: 0,
+    ingredient_id: 0,        // number, not string
+    quantityPerItem: '',     // Make deletable - string for better UX
   });
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [menuItems, setMenuItems] = useState(mockMenuItems);
 
-  const categories = ['Pizza', 'Burgers', 'Salads', 'Pasta', 'Beverages', 'Desserts'];
+  const categories = ['Beverages', 'Food', 'Desserts', 'Appetizers', 'Main Course', 'Sides', 'Other'];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [menuData, ingredientsData, counts] = await Promise.all([
+        fetchMenuItems(),
+        fetchIngredients(),
+        fetchMenuIngredientCounts(),
+      ]);
+      // Attach counts from view
+      setMenuItems(menuData.map((m: any) => ({ ...m, recipe_count: counts[m.id] ?? 0 })));
+      setIngredients(ingredientsData);
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Auto-scroll to form when editing
   useEffect(() => {
@@ -68,26 +100,47 @@ export default function Menu() {
     }
   }, [editingMenuId]);
 
+  const handleIngredientSelect = (ingredientName: string) => {
+    const ingredient = ingredients.find(ing => ing.name === ingredientName);
+    setIngredientForm(prev => ({
+      ...prev,
+      ingredientName,
+      ingredient_id: ingredient?.id || 0,  // number, not string
+    }));
+  };
+
   const addIngredientToRecipe = () => {
-    if (!ingredientForm.ingredientName || ingredientForm.quantityPerItem <= 0) {
+    const qtyNum = Number(ingredientForm.quantityPerItem);
+    
+    if (!ingredientForm.ingredientName || !ingredientForm.ingredient_id || !ingredientForm.quantityPerItem || qtyNum <= 0) {
       toast.error('Please select an ingredient and enter a valid quantity');
       return;
     }
 
-    const ingredient = mockIngredients.find(ing => ing.name === ingredientForm.ingredientName);
+    const ingredient = ingredients.find(ing => ing.name === ingredientForm.ingredientName);
     if (!ingredient) return;
 
     const newIngredient: RecipeIngredient = {
       id: Date.now().toString(),
+      ingredient_id: ingredientForm.ingredient_id,  // CRITICAL: Include ingredient_id for DB insert
       ingredientName: ingredientForm.ingredientName,
-      quantityPerItem: ingredientForm.quantityPerItem,
-      unit: ingredient.unit,
+      quantityPerItem: qtyNum,
+      unit: ingredient.base_unit,
     };
 
-    setRecipeIngredients(prev => [...prev, newIngredient]);
+    // Prevent duplicate ingredient entries by ingredient_id
+    setRecipeIngredients(prev => {
+      const exists = prev.some(ri => ri.ingredient_id === newIngredient.ingredient_id);
+      if (exists) {
+        toast.error('Ingredient already added to this recipe');
+        return prev;
+      }
+      return [...prev, newIngredient];
+    });
     setIngredientForm({
       ingredientName: '',
-      quantityPerItem: 0,
+      ingredient_id: 0,
+      quantityPerItem: '',
     });
     toast.success('Ingredient added to recipe');
   };
@@ -100,16 +153,59 @@ export default function Menu() {
   const editIngredientInRecipe = (ingredient: RecipeIngredient) => {
     setIngredientForm({
       ingredientName: ingredient.ingredientName,
-      quantityPerItem: ingredient.quantityPerItem,
+      ingredient_id: ingredient.ingredient_id,
+      quantityPerItem: ingredient.quantityPerItem.toString(),
     });
     removeIngredientFromRecipe(ingredient.id);
   };
 
-  const saveMenuItemAndRecipe = () => {
+  const saveMenuItemAndRecipe = async () => {
+    // Validate menu item name and category
+    if (!menuForm.name.trim()) {
+      toast.error('Please enter a menu item name');
+      return;
+    }
+    if (!menuForm.category) {
+      toast.error('Please select a category');
+      return;
+    }
+
+    // CRITICAL VALIDATION: Check all recipe ingredients have valid ingredient_id
+    const invalidIngredients = recipeIngredients.filter(ing => !ing.ingredient_id || ing.ingredient_id <= 0);
+    if (invalidIngredients.length > 0) {
+      toast.error(`${invalidIngredients.length} recipe ingredient(s) missing valid ID. Please remove and re-add them.`);
+      console.error('Invalid ingredients:', invalidIngredients);
+      return;
+    }
+
     setShowConfirmModal(false);
-    // Mock API call
-    setTimeout(() => {
-      setSuccessMessage('Menu item and recipe saved successfully');
+    setSubmitting(true);
+
+    try {
+      // De-duplicate recipe rows by ingredient_id before save
+      const dedupedRecipe = Object.values(
+        recipeIngredients.reduce((acc: Record<number, { ingredient_id: number; qty_per_item: number }>, ing) => {
+          if (!acc[ing.ingredient_id]) {
+            acc[ing.ingredient_id] = { ingredient_id: ing.ingredient_id, qty_per_item: ing.quantityPerItem };
+          } else {
+            acc[ing.ingredient_id].qty_per_item += ing.quantityPerItem;
+          }
+          return acc;
+        }, {})
+      ) as { ingredient_id: number; qty_per_item: number }[];
+
+      const isUpdate = editingMenuId !== null;
+      
+      await saveMenuItem({
+        id: editingMenuId ? parseInt(editingMenuId) : null, // Omit for creation, include for update
+        name: menuForm.name,
+        price: menuForm.basePrice,
+        category: menuForm.category,
+        active: menuForm.active,
+        recipe: dedupedRecipe,
+      });
+
+      setSuccessMessage(`Menu item ${isUpdate ? 'updated' : 'created'} successfully`);
       setShowSuccessModal(true);
       setMenuForm({
         name: '',
@@ -119,39 +215,136 @@ export default function Menu() {
       });
       setRecipeIngredients([]);
       setEditingMenuId(null);
-    }, 1000);
+      
+      await loadData();
+      toast.success(`Menu item ${isUpdate ? 'updated' : 'created'} successfully!`);
+    } catch (error: any) {
+      console.error('Error saving menu item:', error);
+      const errorMsg = error.message || 'Failed to save menu item';
+      toast.error(errorMsg);
+      
+      // Show detailed error in console for debugging
+      console.error('Full error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const loadMenuItem = (item: any) => {
+    if (!isAdmin) {
+      toast.error('You do not have permission to edit menu items.');
+      return;
+    }
+
     setMenuForm({
       name: item.name,
       basePrice: item.price,
       category: item.category,
       active: item.active,
     });
-    setRecipeIngredients(
-      item.recipe.map((ing: any, index: number) => ({
-        id: index.toString(),
-        ingredientName: ing.ingredient_name,
-        quantityPerItem: ing.qty_per_item,
-        unit: mockIngredients.find(i => i.name === ing.ingredient_name)?.unit || 'unit',
-      }))
-    );
+    
+    // Prefill from view for authoritative data
+    (async () => {
+      try {
+        const rows = await fetchMenuItemRecipeFromView(item.id);
+        const mapped = rows.map((row, index) => {
+          const ing = ingredients.find((i: any) => i.id === row.ingredient_id);
+          return {
+            id: index.toString(),
+            ingredient_id: row.ingredient_id,
+            ingredientName: row.ingredient_name || ing?.name || `Ingredient #${row.ingredient_id}`,
+            quantityPerItem: row.qty_per_item,
+            unit: ing?.base_unit || 'unit',
+          };
+        });
+        setRecipeIngredients(mapped);
+      } catch (e) {
+        setRecipeIngredients([]);
+      }
+    })();
     setEditingMenuId(item.id);
   };
 
-  const toggleMenuItemActive = (id: string, currentStatus: boolean) => {
-    setMenuItems(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, active: !currentStatus } : item
-      )
-    );
-    
-    const message = currentStatus 
-      ? 'Menu item deactivated successfully' 
-      : 'Menu item activated successfully';
-    toast.success(message);
+  const toggleMenuItemActive = async (id: string, currentStatus: boolean) => {
+    if (!isAdmin) {
+      toast.error('You do not have permission to modify menu items.');
+      return;
+    }
+
+    try {
+      // Find the menu item to get its current data
+      const menuItem = menuItems.find(item => item.id === id);
+      if (!menuItem) {
+        toast.error('Menu item not found');
+        return;
+      }
+
+      // Get current recipe data to preserve it during the update
+      // Get current recipe data to preserve it during the update
+      let currentRecipe;
+      try {
+        currentRecipe = await fetchMenuItemRecipeFromView(parseInt(id));
+        if (!currentRecipe || currentRecipe.length === 0) {
+          console.warn('No recipe data found for menu item, preserving empty recipe');
+          currentRecipe = [];
+        }
+      } catch (err) {
+        console.error('Failed to fetch current recipe, aborting toggle:', err);
+        toast.error('Failed to retrieve menu item recipe');
+        return;
+      }
+      // Update the menu item with ALL current data but toggled active status
+      await saveMenuItem({
+        id: parseInt(id), // Include ID for update
+        name: menuItem.name,        // Current name
+        price: menuItem.price,      // Current price  
+        category: menuItem.category, // Current category
+        active: !currentStatus,     // Toggle the active status
+        recipe: currentRecipe.map(r => ({ // Current recipe data
+          ingredient_id: r.ingredient_id,
+          qty_per_item: r.qty_per_item
+        }))
+      });
+
+      // Update local state to reflect the change
+      setMenuItems(prev => 
+        prev.map(item => 
+          item.id === id ? { ...item, active: !currentStatus } : item
+        )
+      );
+      
+      const message = currentStatus 
+        ? 'Menu item deactivated successfully' 
+        : 'Menu item activated successfully';
+      toast.success(message);
+      
+      // Refresh the data to ensure consistency
+      await loadData();
+    } catch (error: any) {
+      console.error('Error toggling menu item status:', error);
+      toast.error(error.message || 'Failed to update menu item status');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-heading font-bold">Menu & Recipes</h1>
+          <p className="text-muted-foreground mt-1">Loading...</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
@@ -193,6 +386,7 @@ export default function Menu() {
                       step="0.01"
                       min="0"
                       value={menuForm.basePrice}
+                      onWheel={(e) => e.currentTarget.blur()}
                       onChange={(e) => setMenuForm(prev => ({ ...prev, basePrice: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
@@ -203,7 +397,7 @@ export default function Menu() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((category) => (
+                        {(categories ?? []).map((category) => (
                           <SelectItem key={category} value={category}>
                             {category}
                           </SelectItem>
@@ -233,14 +427,14 @@ export default function Menu() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="ingredientName">Ingredient *</Label>
-                    <Select value={ingredientForm.ingredientName} onValueChange={(value) => setIngredientForm(prev => ({ ...prev, ingredientName: value }))}>
+                    <Select value={ingredientForm.ingredientName} onValueChange={handleIngredientSelect}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select ingredient" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockIngredients.map((ingredient) => (
+                        {(ingredients ?? []).map((ingredient) => (
                           <SelectItem key={ingredient.id} value={ingredient.name}>
-                            {ingredient.name} ({ingredient.unit})
+                            {ingredient.name} ({ingredient.base_unit})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -254,7 +448,9 @@ export default function Menu() {
                       step="0.01"
                       min="0"
                       value={ingredientForm.quantityPerItem}
-                      onChange={(e) => setIngredientForm(prev => ({ ...prev, quantityPerItem: parseFloat(e.target.value) || 0 }))}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onChange={(e) => setIngredientForm(prev => ({ ...prev, quantityPerItem: e.target.value }))}
+                      placeholder="0.00"
                     />
                   </div>
                 </div>
@@ -264,7 +460,7 @@ export default function Menu() {
                   Add Ingredient
                 </Button>
 
-                {recipeIngredients.length > 0 && (
+                {(recipeIngredients?.length ?? 0) > 0 && (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -275,7 +471,7 @@ export default function Menu() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {recipeIngredients.map((ingredient) => (
+                        {(recipeIngredients ?? []).map((ingredient) => (
                           <TableRow key={ingredient.id}>
                             <TableCell className="font-medium">{ingredient.ingredientName}</TableCell>
                             <TableCell>{ingredient.quantityPerItem} {ingredient.unit}</TableCell>
@@ -323,38 +519,41 @@ export default function Menu() {
                     <TableHead>Price</TableHead>
                     <TableHead>Recipe Items</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {isAdmin && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {menuItems.map((item) => (
+                  {(menuItems ?? []).map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.category}</TableCell>
-                      <TableCell>${item.price.toFixed(2)}</TableCell>
-                      <TableCell>{item.recipe.length} ingredients</TableCell>
+                      <TableCell>{formatCurrency(item.price ?? 0)}</TableCell>
+                      <TableCell>{item.recipe_count ?? 0} ingredients</TableCell>
                       <TableCell>
                         <Switch
-                          checked={item.active}
+                          checked={item.active ?? true}
                           onCheckedChange={() => toggleMenuItemActive(item.id, item.active)}
+                          disabled={!isAdmin}
                         />
                       </TableCell>
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => loadMenuItem(item)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit menu item</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => loadMenuItem(item)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit menu item</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

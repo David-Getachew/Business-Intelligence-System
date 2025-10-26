@@ -30,7 +30,7 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
-  const [preset, setPreset] = useState('today');
+  const [preset, setPreset] = useState('all-time');
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>(
     value.start ? new Date(value.start) : undefined
@@ -43,6 +43,15 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
   const handlePreset = (presetName: string) => {
     setPreset(presetName);
+    
+    if (presetName === 'all-time') {
+      // All time - no date filters
+      setStartDate(undefined);
+      setEndDate(undefined);
+      onChange({ start: '', end: '' });
+      return;
+    }
+
     const today = new Date();
     let start = new Date();
     let end = today;
@@ -82,7 +91,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   };
 
   const clearFilter = () => {
-    setPreset('today');
+    setPreset('all-time');
     setStartDate(undefined);
     setEndDate(undefined);
     onChange({ start: '', end: '' });
@@ -91,6 +100,13 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={preset === 'all-time' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handlePreset('all-time')}
+        >
+          All Time
+        </Button>
         <Button
           variant={preset === 'today' ? 'default' : 'outline'}
           size="sm"
@@ -148,7 +164,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                       {startDate ? format(startDate, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 mt-2" align="start">
                     <Calendar
                       mode="single"
                       selected={startDate}
@@ -183,7 +199,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
                       {endDate ? format(endDate, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 mt-2" align="start">
                     <Calendar
                       mode="single"
                       selected={endDate}

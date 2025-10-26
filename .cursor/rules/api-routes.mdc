@@ -1,0 +1,10 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+Define API routes in a serverless setup (e.g., using Next.js API routes or Supabase Edge Functions) to handle data operations, integrated with Cursor rules for code generation. Routes should enforce RBAC by checking the user's session and role via Supabase auth helpers (e.g., createServerClient with cookies). Example routes:
+
+/api/auth/login: POST endpoint for user login. Accepts email/password, calls supabase.auth.signInWithPassword, returns session and role from profiles. Cursor rule: "Generate secure auth endpoints with error handling for invalid credentials and rate limiting."
+Use of correct respective RPC endpoints for INSERTs
+/api/dashboard/kpis: GET to fetch aggregated KPIs and graphs data from daily_summaries or views. Restricted to admins only—check role and return 403 if staff. Includes date filtering. Cursor rule: "Build read-only API routes for aggregates with date params, caching for performance, and admin-only access via session validation."

@@ -32,7 +32,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
               borderRadius: '8px',
             }}
             labelFormatter={(date) => new Date(date).toLocaleDateString()}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
+            formatter={(value: number) => [`${value.toFixed(2)} Birr`, '']}
           />
           <Legend />
           <Line
@@ -45,7 +45,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
           />
           <Line
             type="monotone"
-            dataKey="total_expense"
+            dataKey="expenses"
             stroke="hsl(var(--destructive))"
             strokeWidth={2}
             dot={false}

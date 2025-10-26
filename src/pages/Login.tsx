@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -16,6 +19,16 @@ export default function Login() {
     password: '',
     general: ''
   });
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user) {
+      const from = (location.state as any)?.from || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
 
   const validateForm = () => {
     let isValid = true;
@@ -49,15 +62,34 @@ export default function Login() {
     setIsLoading(true);
     setErrors({ email: '', password: '', general: '' });
     
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // In a real app, you would handle login logic here
-      console.log('Login attempt with:', { email, password });
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          setErrors(prev => ({
+            ...prev,
+            general: 'Invalid email or password. Please try again.'
+          }));
+        } else if (error.message.includes('Email not confirmed')) {
+          setErrors(prev => ({
+            ...prev,
+            general: 'Please verify your email address before logging in.'
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            general: error.message || 'An error occurred. Please try again.'
+          }));
+        }
+      } else {
+        toast.success('Successfully logged in!');
+      }
     } catch (error) {
+      console.error('Login error:', error);
       setErrors(prev => ({
         ...prev,
-        general: 'Invalid credentials. Please try again.'
+        general: 'An unexpected error occurred. Please try again.'
       }));
     } finally {
       setIsLoading(false);

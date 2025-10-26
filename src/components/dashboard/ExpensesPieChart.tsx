@@ -1,12 +1,6 @@
+import { useState, useEffect } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Label } from 'recharts';
-
-const mockExpenseData = [
-  { name: 'Rent', value: 2500 },
-  { name: 'Utilities', value: 450 },
-  { name: 'Marketing', value: 300 },
-  { name: 'Maintenance', value: 175 },
-  { name: 'Other', value: 225 },
-];
+import { Skeleton } from '@/components/ui/skeleton';
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -16,10 +10,62 @@ const COLORS = [
   'hsl(var(--muted-foreground))',
 ];
 
-const totalExpenses = mockExpenseData.reduce((sum, item) => sum + item.value, 0);
+interface ExpensesPieChartProps {
+  dailySummaries?: any[];
+}
 
-export function ExpensesPieChart() {
-  const dataWithPercentages = mockExpenseData.map(item => ({
+export function ExpensesPieChart({ dailySummaries = [] }: ExpensesPieChartProps) {
+  const [expenseData, setExpenseData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadExpenseData = async () => {
+    try {
+      setLoading(true);
+      
+      const aggregatedExpenses: { [key: string]: number } = {};
+      
+      dailySummaries.forEach((summary: any) => {
+        if (summary.top_expense_items && typeof summary.top_expense_items === 'object') {
+          Object.entries(summary.top_expense_items).forEach(([expenseName, amount]) => {
+            const amountNum = Number(amount) || 0;
+            aggregatedExpenses[expenseName] = (aggregatedExpenses[expenseName] || 0) + amountNum;
+          });
+        }
+      });
+
+      const chartData = Object.entries(aggregatedExpenses).map(([name, value]) => ({
+        name,
+        value: value as number
+      }));
+
+      setExpenseData(chartData);
+    } catch (error) {
+      console.error('Error loading expense data:', error);
+      setExpenseData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExpenseData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailySummaries]);
+
+  if (loading) {
+    return <Skeleton className="h-[300px] w-full" />;
+  }
+
+  if (expenseData.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+        No expense data available yet
+      </div>
+    );
+  }
+
+  const totalExpenses = expenseData.reduce((sum, item) => sum + item.value, 0);
+  const dataWithPercentages = expenseData.map(item => ({
     ...item,
     percentage: ((item.value / totalExpenses) * 100).toFixed(1)
   }));
@@ -72,7 +118,7 @@ export function ExpensesPieChart() {
               border: '1px solid hsl(var(--border))',
               borderRadius: '8px',
             }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']}
+            formatter={(value: number) => [`${value.toFixed(2)} Birr`, 'Amount']}
             itemStyle={{ color: 'hsl(var(--foreground))' }}
           />
           <Label
@@ -81,7 +127,7 @@ export function ExpensesPieChart() {
                 return (
                   <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                     <tspan x={viewBox.cx} y={(viewBox.cy || 0) - 8} className="fill-foreground text-2xl font-bold">
-                      ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Birr
                     </tspan>
                     <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 16} className="fill-muted-foreground text-sm">
                       Total Expenses

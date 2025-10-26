@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { Package, AlertTriangle, History, Plus, Minus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, AlertTriangle, Minus, Plus, Loader2, AlertCircle, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -29,9 +33,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { mockInventoryOnHand, mockInventoryMovements } from '@/mocks/inventory';
-import { mockIngredients } from '@/mocks/ingredients';
+import { fetchInventory, adjustIngredientStock } from '@/api/index';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Supplier {
   id: string;
@@ -43,60 +48,74 @@ interface Supplier {
 }
 
 export default function Inventory() {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [movements, setMovements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [showReorderModal, setShowReorderModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [showEditSettingsModal, setShowEditSettingsModal] = useState(false);
+  const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  const [reorderForm, setReorderForm] = useState({
-    suggestedQty: 0,
-  });
   
   const [adjustForm, setAdjustForm] = useState({
     adjustQty: 0,
     reason: '',
   });
 
-  const [supplierForm, setSupplierForm] = useState({
+  const [addIngredientForm, setAddIngredientForm] = useState({
     name: '',
-    email: '',
-    phone: '',
-    ingredients: [] as string[],
-    defaultPackSize: 0,
+    base_unit: '',
+    reorder_point: 0,
+    active: true,
   });
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>([
-    {
-      id: '1',
-      name: 'Fresh Produce Co.',
-      email: 'orders@freshproduce.com',
-      phone: '(555) 123-4567',
-      ingredients: ['Romaine Lettuce', 'Tomato Sauce'],
-      defaultPackSize: 10
-    },
-    {
-      id: '2',
-      name: 'Dairy Suppliers Inc.',
-      email: 'dairy@dairysuppliers.com',
-      phone: '(555) 987-6543',
-      ingredients: ['Mozzarella Cheese', 'Cheddar Cheese', 'Milk'],
-      defaultPackSize: 5
-    }
-  ]);
+  useEffect(() => {
+    loadInventory();
+  }, []);
 
-  const openReorderModal = (item: any) => {
-    setSelectedItem(item);
-    const suggestedQty = Math.max(item.reorder_point * 2, 10);
-    setReorderForm({
-      suggestedQty,
-    });
-    setShowReorderModal(true);
+  const loadInventory = async () => {
+    try {
+      setLoading(true);
+      const inventory = await fetchInventory();
+      setInventoryItems(inventory);
+    } catch (error: any) {
+      console.error('Error loading inventory:', error);
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const loadMovements = async (ingredientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('view_inventory_movements')
+        .select('*')
+        .eq('ingredient_id', ingredientId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setMovements(data || []);
+    } catch (error: any) {
+      console.error('Error loading movements:', error);
+      toast.error('Failed to load movement history');
+    }
+  };
+
+  
+
+
   const openAdjustModal = (item: any) => {
+    if (!isAdmin) {
+      toast.error('You do not have permission to adjust inventory stock.');
+      return;
+    }
     setSelectedItem(item);
     setAdjustForm({
       adjustQty: 0,
@@ -105,27 +124,54 @@ export default function Inventory() {
     setShowAdjustModal(true);
   };
 
-  const openHistoryModal = (item: any) => {
+  const [editSettingsForm, setEditSettingsForm] = useState<{ avg_unit_cost: number | string; reorder_point: number | string }>({ avg_unit_cost: '', reorder_point: '' });
+  const openEditSettings = (item: any) => {
     setSelectedItem(item);
-    setShowHistoryModal(true);
+    setEditSettingsForm({
+      avg_unit_cost: item.avg_unit_cost ?? 0,
+      reorder_point: item.reorder_point ?? 0,
+    });
+    setShowEditSettingsModal(true);
   };
 
-  const handleReorder = () => {
-    setShowReorderModal(false);
-    setSuccessMessage(`Reorder request noted for ${selectedItem?.ingredient_name}`);
-    setShowSuccessModal(true);
-    setSelectedItem(null);
-  };
 
-  const handleAdjustStock = () => {
-    if (!adjustForm.reason.trim()) {
+  const handleAdjustStock = async () => {
+    if (!selectedItem || !adjustForm.reason.trim()) {
       toast.error('Please provide a reason for the adjustment');
       return;
     }
+
+    // Check if new quantity would be negative
+    const newQuantity = (selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty;
+    if (newQuantity < 0) {
+      toast.error('Cannot adjust: New quantity would be negative.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Call RPC with correct parameter order
+      await adjustIngredientStock(
+        adjustForm.adjustQty,        // _adjust_qty (signed numeric)
+        selectedItem.ingredient_id,  // _ingredient_id (integer)
+        adjustForm.reason,          // _notes (text)
+        null                        // _unit_cost (numeric, nullable)
+      );
+
     setShowAdjustModal(false);
-    setSuccessMessage(`Stock adjustment recorded for ${selectedItem?.ingredient_name}`);
+      setSuccessMessage(`Stock adjustment recorded for ${selectedItem?.name}`);
     setShowSuccessModal(true);
+      setAdjustForm({ adjustQty: 0, reason: '' });
     setSelectedItem(null);
+      await loadInventory();
+      toast.success('Inventory adjusted successfully!');
+    } catch (error: any) {
+      console.error('Error adjusting inventory:', error);
+      toast.error(error.message || 'Failed to adjust inventory');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getStockStatus = (item: any) => {
@@ -134,38 +180,11 @@ export default function Inventory() {
     return { status: 'In Stock', variant: 'success' as const };
   };
 
-  const itemMovements = mockInventoryMovements.filter(
+  const itemMovements = movements.filter(
     movement => movement.ingredient_id === selectedItem?.ingredient_id
   );
 
-  const addSupplier = () => {
-    if (!supplierForm.name) {
-      toast.error('Please enter supplier name');
-      return;
-    }
-
-    if (!supplierForm.email && !supplierForm.phone) {
-      toast.error('Please provide either email or phone contact');
-      return;
-    }
-
-    const newSupplier: Supplier = {
-      id: (suppliers.length + 1).toString(),
-      ...supplierForm,
-    };
-
-    setSuppliers(prev => [...prev, newSupplier]);
-    setSupplierForm({
-      name: '',
-      email: '',
-      phone: '',
-      ingredients: [],
-      defaultPackSize: 0,
-    });
-    setShowSupplierModal(false);
-    setSuccessMessage('Supplier added successfully');
-    setShowSuccessModal(true);
-  };
+  
 
   return (
     <TooltipProvider>
@@ -181,10 +200,12 @@ export default function Inventory() {
           <div>
             <h2 className="text-xl font-heading font-bold">Current Inventory</h2>
           </div>
-          <Button onClick={() => setShowSupplierModal(true)} className="gradient-primary">
+          {isAdmin && (
+            <Button onClick={() => setShowAddIngredientModal(true)} className="gradient-primary">
             <Plus className="mr-2 h-4 w-4" />
-            Add Supplier
+              Add Ingredient
           </Button>
+          )}
         </div>
 
         <Card className="shadow-card">
@@ -198,53 +219,40 @@ export default function Inventory() {
                     <TableHead>Reorder Point</TableHead>
                     <TableHead>Avg Unit Cost</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {isAdmin && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockInventoryOnHand.map((item) => {
+                  {(inventoryItems ?? []).map((item) => {
                     const stockStatus = getStockStatus(item);
                     return (
                       <TableRow key={item.ingredient_id}>
-                        <TableCell className="font-medium">{item.ingredient_name}</TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
-                          {item.qty_on_hand} {item.unit}
+                          {item.qty_on_hand ?? 0} {item.base_unit}
                         </TableCell>
-                        <TableCell>{item.reorder_point} {item.unit}</TableCell>
-                        <TableCell>${item.avg_unit_cost.toFixed(2)}</TableCell>
+                        <TableCell>{item.reorder_point ?? 0} {item.base_unit}</TableCell>
+                        <TableCell>{formatCurrency(item.avg_unit_cost || 0)}</TableCell>
                         <TableCell>
                           <Badge variant={stockStatus.variant}>
                             {stockStatus.status}
                           </Badge>
                         </TableCell>
+                        {isAdmin && (
                         <TableCell>
                           <div className="flex gap-2">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openReorderModal(item)}
-                                >
-                                  Reorder
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Reorder item</p>
-                              </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => openHistoryModal(item)}
+                                  onClick={() => openEditSettings(item)}
                                 >
-                                  <History className="h-4 w-4" />
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>See movement history</p>
+                                <p>Edit inventory settings</p>
                               </TooltipContent>
                             </Tooltip>
                             <Tooltip>
@@ -263,6 +271,7 @@ export default function Inventory() {
                             </Tooltip>
                           </div>
                         </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -272,85 +281,14 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        {/* Suppliers Section */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Suppliers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Supplier Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Ingredients</TableHead>
-                    <TableHead>Default Pack Size</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell className="font-medium">{supplier.name}</TableCell>
-                      <TableCell>
-                        {supplier.email && <div>Email: {supplier.email}</div>}
-                        {supplier.phone && <div>Phone: {supplier.phone}</div>}
-                      </TableCell>
-                      <TableCell>
-                        {supplier.ingredients.join(', ')}
-                      </TableCell>
-                      <TableCell>
-                        {supplier.defaultPackSize ? `${supplier.defaultPackSize} units` : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        
 
-        {/* Reorder Modal - Read Only */}
-        <Dialog open={showReorderModal} onOpenChange={setShowReorderModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reorder {selectedItem?.ingredient_name}</DialogTitle>
-              <DialogDescription>
-                Supplier information for reordering
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Current Stock</Label>
-                <Input value={`${selectedItem?.qty_on_hand} ${selectedItem?.unit}`} readOnly className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>Suggested Quantity</Label>
-                <Input
-                  type="number"
-                  value={reorderForm.suggestedQty}
-                  readOnly
-                  className="bg-muted"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Supplier Contact</Label>
-                <Input value="Mock Supplier - (555) 123-4567" readOnly className="bg-muted" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setShowReorderModal(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Adjust Stock Modal */}
         <Dialog open={showAdjustModal} onOpenChange={setShowAdjustModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Adjust Stock - {selectedItem?.ingredient_name}</DialogTitle>
+              <DialogTitle>Adjust Stock - {selectedItem?.name}</DialogTitle>
               <DialogDescription>
                 Make manual adjustments to inventory levels
               </DialogDescription>
@@ -358,7 +296,7 @@ export default function Inventory() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Current Stock</Label>
-                <Input value={`${selectedItem?.qty_on_hand} ${selectedItem?.unit}`} readOnly className="bg-muted" />
+                <Input value={`${selectedItem?.qty_on_hand} ${selectedItem?.base_unit}`} readOnly className="bg-muted" />
               </div>
               <div className="space-y-2">
                 <Label>Adjustment Quantity</Label>
@@ -366,26 +304,31 @@ export default function Inventory() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setAdjustForm(prev => ({ ...prev, adjustQty: prev.adjustQty - 1 }))}
+                    onClick={() => setAdjustForm(prev => ({ ...prev, adjustQty: Number((prev.adjustQty - 1).toFixed(2)) }))}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
                     type="number"
+                    step="any"
                     value={adjustForm.adjustQty}
-                    onChange={(e) => setAdjustForm(prev => ({ ...prev, adjustQty: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => setAdjustForm(prev => ({ ...prev, adjustQty: parseFloat(e.target.value) || 0 }))}
+                    onWheel={(e) => e.currentTarget.blur()}
                     className="text-center"
                   />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setAdjustForm(prev => ({ ...prev, adjustQty: prev.adjustQty + 1 }))}
+                    onClick={() => setAdjustForm(prev => ({ ...prev, adjustQty: Number((prev.adjustQty + 1).toFixed(2)) }))}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  New quantity will be: {(selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty} {selectedItem?.unit}
+                <p className={`text-sm ${(selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty < 0 ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                  New quantity will be: {(selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty} {selectedItem?.base_unit}
+                  {(selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty < 0 && (
+                    <span className="block text-xs text-red-600 mt-1">⚠️ Cannot adjust: New quantity would be negative</span>
+                  )}
                 </p>
               </div>
               <div className="space-y-2">
@@ -401,173 +344,171 @@ export default function Inventory() {
               <Button variant="outline" onClick={() => setShowAdjustModal(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAdjustStock} className="gradient-primary">
+              <Button 
+                onClick={handleAdjustStock} 
+                className="gradient-primary"
+                disabled={(selectedItem?.qty_on_hand || 0) + adjustForm.adjustQty < 0}
+              >
                 Confirm Adjustment
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Movement History Modal */}
-        <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-          <DialogContent className="max-w-2xl">
+        {/* Add Ingredient Modal (Admin only) */}
+        <Dialog open={showAddIngredientModal} onOpenChange={setShowAddIngredientModal}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Movement History - {selectedItem?.ingredient_name}</DialogTitle>
+              <DialogTitle>Add Ingredient</DialogTitle>
               <DialogDescription>
-                Recent inventory movements for this ingredient
+                Create a new ingredient record
               </DialogDescription>
             </DialogHeader>
-            <div className="max-h-96 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Change</TableHead>
-                    <TableHead>Reference</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {itemMovements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        No movement history available
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    itemMovements.map((movement) => (
-                      <TableRow key={movement.id}>
-                        <TableCell>{new Date(movement.movement_date).toLocaleDateString()}</TableCell>
-                        <TableCell className="capitalize">{movement.movement_type}</TableCell>
-                        <TableCell className={movement.qty_change > 0 ? 'text-success' : 'text-destructive'}>
-                          {movement.qty_change > 0 ? '+' : ''}{movement.qty_change}
-                        </TableCell>
-                        <TableCell>{movement.reference}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ing-name">Name *</Label>
+                <Input id="ing-name" value={addIngredientForm.name} onChange={(e) => setAddIngredientForm(prev => ({ ...prev, name: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ing-unit">Base Unit *</Label>
+                <Input id="ing-unit" value={addIngredientForm.base_unit} onChange={(e) => setAddIngredientForm(prev => ({ ...prev, base_unit: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ing-reorder">Reorder Point</Label>
+                <Input id="ing-reorder" type="number" min="0" step="any" value={addIngredientForm.reorder_point}
+                  onChange={(e) => setAddIngredientForm(prev => ({ ...prev, reorder_point: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input 
+                    id="ing-active" 
+                    type="checkbox" 
+                    checked={addIngredientForm.active} 
+                    onChange={(e) => setAddIngredientForm(prev => ({ ...prev, active: e.target.checked }))}
+                    className="sr-only"
+                  />
+                  <label 
+                    htmlFor="ing-active"
+                    className={cn(
+                      "flex items-center justify-center w-12 h-6 rounded-full cursor-pointer transition-all duration-200",
+                      addIngredientForm.active 
+                        ? "bg-primary" 
+                        : "bg-muted"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200",
+                      addIngredientForm.active ? "translate-x-3" : "-translate-x-3"
+                    )} />
+                  </label>
+                </div>
+                <Label htmlFor="ing-active" className="text-sm font-medium cursor-pointer">
+                  Active
+                </Label>
+              </div>
             </div>
             <DialogFooter>
-              <Button onClick={() => setShowHistoryModal(false)}>
-                Close
+              <Button variant="outline" onClick={() => setShowAddIngredientModal(false)}>Cancel</Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    const { error } = await supabase
+                      .from('ingredients')
+                      .insert([{
+                        name: addIngredientForm.name,
+                        base_unit: addIngredientForm.base_unit,
+                        reorder_point: addIngredientForm.reorder_point,
+                        active: addIngredientForm.active,
+                      }]);
+                    if (error) throw error;
+                    setShowAddIngredientModal(false);
+                    setSuccessMessage('Ingredient added successfully');
+                    setShowSuccessModal(true);
+                    setAddIngredientForm({ name: '', base_unit: '', reorder_point: 0, active: true });
+                    await loadInventory();
+                    toast.success('Ingredient added');
+                  } catch (e: any) {
+                    console.error('Add ingredient error:', e);
+                    toast.error(e.message || 'Failed to add ingredient');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                className="gradient-primary"
+              >
+                Save
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Add Supplier Modal */}
-        <Dialog open={showSupplierModal} onOpenChange={setShowSupplierModal}>
-          <DialogContent className="max-w-2xl">
+        {/* Edit Inventory Settings Modal */}
+        <Dialog open={showEditSettingsModal} onOpenChange={setShowEditSettingsModal}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Supplier</DialogTitle>
-              <DialogDescription>
-                Add supplier information and ingredients they supply
-              </DialogDescription>
+              <DialogTitle>Edit Settings - {selectedItem?.name}</DialogTitle>
+              <DialogDescription>Update average unit cost and reorder point</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="supplierName">Supplier Name *</Label>
+                <Label htmlFor="avg_unit_cost">Average Unit Cost</Label>
                 <Input
-                  id="supplierName"
-                  value={supplierForm.name}
-                  onChange={(e) => setSupplierForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter supplier name"
+                  id="avg_unit_cost"
+                  type="number"
+                  step="0.01"
+                  value={editSettingsForm.avg_unit_cost}
+                  onChange={(e) => setEditSettingsForm(prev => ({ ...prev, avg_unit_cost: e.target.value }))}
                 />
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supplierEmail">Email (Optional)</Label>
-                  <Input
-                    id="supplierEmail"
-                    type="email"
-                    value={supplierForm.email}
-                    onChange={(e) => setSupplierForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="supplier@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="supplierPhone">Phone (Optional)</Label>
-                  <Input
-                    id="supplierPhone"
-                    value={supplierForm.phone}
-                    onChange={(e) => setSupplierForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-              </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="ingredients">Ingredients Supplied</Label>
-                <Select onValueChange={(value) => {
-                  if (!supplierForm.ingredients.includes(value)) {
-                    setSupplierForm(prev => ({ 
-                      ...prev, 
-                      ingredients: [...prev.ingredients, value] 
-                    }));
-                  }
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select ingredients" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockIngredients.map((ingredient) => (
-                      <SelectItem key={ingredient.id} value={ingredient.name}>
-                        {ingredient.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {supplierForm.ingredients.map((ingredient, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {ingredient}
-                      <button 
-                        type="button"
-                        onClick={() => setSupplierForm(prev => ({
-                          ...prev,
-                          ingredients: prev.ingredients.filter((_, i) => i !== index)
-                        }))}
-                        className="ml-1 hover:bg-destructive/20 rounded-full"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="defaultPackSize">Default Pack Size (Optional)</Label>
+                <Label htmlFor="reorder_point">Reorder Point</Label>
                 <Input
-                  id="defaultPackSize"
+                  id="reorder_point"
                   type="number"
-                  min="0"
-                  value={supplierForm.defaultPackSize || ''}
-                  onChange={(e) => setSupplierForm(prev => ({ 
-                    ...prev, 
-                    defaultPackSize: parseInt(e.target.value) || 0 
-                  }))}
-                  placeholder="Enter default pack size"
+                  step="any"
+                  value={editSettingsForm.reorder_point}
+                  onChange={(e) => setEditSettingsForm(prev => ({ ...prev, reorder_point: e.target.value }))}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowSupplierModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={addSupplier} className="gradient-primary">
-                Add Supplier
+              <Button variant="outline" onClick={() => setShowEditSettingsModal(false)}>Cancel</Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    const { data, error } = await supabase.rpc('update_inventory_settings', {
+                      _ingredient_id: selectedItem!.ingredient_id,
+                      _payload: {
+                        avg_unit_cost: Number(editSettingsForm.avg_unit_cost) || 0,
+                        reorder_point: Number(editSettingsForm.reorder_point) || 0,
+                      }
+                    });
+                    if (error) throw error;
+                    if (data?.status === 'ok') {
+                      toast.success('Inventory settings updated successfully');
+                    } else {
+                      toast.success('Inventory settings updated');
+                    }
+                    setShowEditSettingsModal(false);
+                    await loadInventory();
+                  } catch (e: any) {
+                    console.error('update_inventory_settings error:', e);
+                    toast.error(e.message || 'Failed to update settings');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                className="gradient-primary"
+              >
+                Save
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        
 
         {/* Success Modal */}
         <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>

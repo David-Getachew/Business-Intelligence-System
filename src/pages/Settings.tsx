@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Settings as SettingsIcon, Users, Palette, Save, Plus, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, Users, Plus, Edit, Trash2, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -29,47 +31,110 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { mockUsers } from '@/mocks/users';
+import { fetchUsers } from '@/api/index';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function Settings() {
-  const [users, setUsers] = useState(mockUsers);
+  const { profile, user } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [newUserForm, setNewUserForm] = useState({
     full_name: '',
     email: '',
-    role: 'staff' as 'owner' | 'staff',
+    password: '',
+    role: 'staff' as 'admin' | 'staff',  // EXACT schema - admin not owner
   });
 
-  const [appPreferences, setAppPreferences] = useState({
-    dateFormat: 'MM/DD/YYYY',
-    currency: 'USD',
-    timezone: 'America/New_York',
-  });
+  const [showPassword, setShowPassword] = useState(false);
 
-  const addUser = () => {
-    if (!newUserForm.full_name || !newUserForm.email) {
+  const isAdmin = profile?.role === 'admin';  // EXACT schema - admin not owner
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [isAdmin]);
+
+  const loadUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const usersList = await fetchUsers();
+      setUsers(usersList);
+    } catch (error: any) {
+      console.error('Error loading users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const addUser = async () => {
+    if (!newUserForm.full_name || !newUserForm.email || !newUserForm.password) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const newUser = {
-      id: (users.length + 1).toString(),
-      ...newUserForm,
-      created_at: new Date().toISOString().split('T')[0],
-      active: true,
-    };
+    if (newUserForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
 
-    setUsers(prev => [...prev, newUser]);
-    setNewUserForm({ full_name: '', email: '', role: 'staff' });
-    setShowAddUserModal(false);
-    setSuccessMessage('User added successfully');
-    setShowSuccessModal(true);
+    try {
+      setSubmitting(true);
+
+      const { data, error } = await supabase.auth.signUp({
+        email: newUserForm.email,
+        password: newUserForm.password,
+        options: {
+          data: {
+            full_name: newUserForm.full_name,
+            role: newUserForm.role,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          toast.error('This email is already registered');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').upsert([
+          {
+            id: data.user.id,
+            email: newUserForm.email,
+            full_name: newUserForm.full_name,
+            role: newUserForm.role,
+          },
+        ]);
+
+        if (profileError) throw profileError;
+      }
+
+      setNewUserForm({ full_name: '', email: '', password: '', role: 'staff' });
+      setShowAddUserModal(false);
+      setSuccessMessage(`User created successfully! They can now sign in with their email and password.`);
+      setShowSuccessModal(true);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Failed to create user');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const editUser = (user: any) => {
@@ -77,27 +142,69 @@ export default function Settings() {
     setShowEditUserModal(true);
   };
 
-  const updateUserRole = (newRole: 'owner' | 'staff') => {
+  const updateUserRole = async (newRole: 'admin' | 'staff') => {
     if (!selectedUser) return;
 
-    setUsers(prev => prev.map(user => 
-      user.id === selectedUser.id 
-        ? { ...user, role: newRole }
-        : user
-    ));
-    setShowEditUserModal(false);
-    setSuccessMessage('User role updated successfully');
-    setShowSuccessModal(true);
+    // Prevent admin from demoting themselves
+    if (user?.id === selectedUser.id && newRole === 'staff') {
+      toast.error('You cannot demote yourself as an admin');
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      setShowEditUserModal(false);
+      setSuccessMessage('User role updated successfully');
+      setShowSuccessModal(true);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error updating user role:', error);
+      toast.error('Failed to update user role');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const removeUser = (userId: string) => {
-    setUsers(prev => prev.filter(user => user.id !== userId));
-    toast.success('User removed successfully');
-  };
+  const removeUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to remove this user? This action cannot be undone.')) {
+      return;
+    }
 
-  const saveAppPreferences = () => {
-    setSuccessMessage('App preferences saved successfully');
-    setShowSuccessModal(true);
+    try {
+      // Check if deleting the last admin
+      const adminCount = users.filter(u => u.role === 'admin').length;
+      const userToDelete = users.find(u => u.id === userId);
+      
+      if (userToDelete?.role === 'admin' && adminCount === 1) {
+        toast.error('Cannot delete the last admin');
+        return;
+      }
+
+      // Prevent self-deletion
+      if (user?.id === userId) {
+        toast.error('Cannot delete your own account');
+        return;
+      }
+
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success('User removed successfully');
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error removing user:', error);
+      toast.error('Failed to remove user');
+    }
   };
 
   const getInitials = (name: string) => {
@@ -117,24 +224,45 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* User Management */}
-      <Card className="shadow-card">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            User Management
-          </CardTitle>
-          <Button
-            onClick={() => setShowAddUserModal(true)}
-            className="gradient-primary"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+      {!isAdmin && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Access restricted. Only admins can manage users. Contact your administrator for more privileges.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* User Management - Admin Only */}
+      {isAdmin && (
+        <Card className="shadow-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              User Management
+            </CardTitle>
+            <Button
+              onClick={() => setShowAddUserModal(true)}
+              className="gradient-primary"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {loadingUsers ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12" />
+                ))}
+              </div>
+            ) : users.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No users found. Click "Add User" to create your first team member.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
@@ -173,8 +301,7 @@ export default function Settings() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {user.role !== 'owner' && (
-                          <Button
+                        {user.id !== profile?.id && (                          <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => removeUser(user.id)}
@@ -189,79 +316,10 @@ export default function Settings() {
               </TableBody>
             </Table>
           </div>
+            )}
         </CardContent>
       </Card>
-
-      {/* App Preferences */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            App Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dateFormat">Date Format</Label>
-              <Select 
-                value={appPreferences.dateFormat} 
-                onValueChange={(value) => setAppPreferences(prev => ({ ...prev, dateFormat: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                  <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                  <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Select 
-                value={appPreferences.currency} 
-                onValueChange={(value) => setAppPreferences(prev => ({ ...prev, currency: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                  <SelectItem value="EUR">EUR (€)</SelectItem>
-                  <SelectItem value="GBP">GBP (£)</SelectItem>
-                  <SelectItem value="CAD">CAD (C$)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Select 
-                value={appPreferences.timezone} 
-                onValueChange={(value) => setAppPreferences(prev => ({ ...prev, timezone: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                  <SelectItem value="America/Chicago">Central Time</SelectItem>
-                  <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                  <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Button onClick={saveAppPreferences} className="gradient-primary">
-            <Save className="mr-2 h-4 w-4" />
-            Save Preferences
-          </Button>
-        </CardContent>
-      </Card>
+      )}
 
       {/* Add User Modal */}
       <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
@@ -293,27 +351,62 @@ export default function Settings() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Enter password (min 6 characters)"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                User will sign in with this email and password
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select 
                 value={newUserForm.role} 
-                onValueChange={(value: 'owner' | 'staff') => setNewUserForm(prev => ({ ...prev, role: value }))}
+                onValueChange={(value: 'admin' | 'staff') => setNewUserForm(prev => ({ ...prev, role: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
+            <Button variant="outline" onClick={() => setShowAddUserModal(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button onClick={addUser} className="gradient-primary">
-              Add User
+            <Button onClick={addUser} className="gradient-primary" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Add User'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -343,7 +436,7 @@ export default function Settings() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Edit, Trash2, Receipt } from 'lucide-react';
+import { Plus, Edit, Trash2, Receipt, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatCurrencyDisplay } from '@/utils/formatCurrency';
 
 interface ExpenseItem {
   id: string;
@@ -51,13 +53,14 @@ export default function Expenses() {
   const [formData, setFormData] = useState({
     category: '',
     subcategory: '',
-    amount: 0,
+    amount: '',
     notes: '',
   });
   const [batch, setBatch] = useState<ExpenseItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const subcategoryOptions = formData.category ? expenseCategories[formData.category as keyof typeof expenseCategories] || [] : [];
 
@@ -78,7 +81,7 @@ export default function Expenses() {
       id: editingId || Date.now().toString(),
       category: formData.category,
       subcategory: formData.subcategory,
-      amount: formData.amount,
+      amount: Number(formData.amount || 0),
       notes: formData.notes,
     };
 
@@ -92,7 +95,7 @@ export default function Expenses() {
     setFormData({
       category: '',
       subcategory: '',
-      amount: 0,
+      amount: '',
       notes: '',
     });
     toast.success('Expense added to batch');
@@ -102,7 +105,7 @@ export default function Expenses() {
     setFormData({
       category: item.category,
       subcategory: item.subcategory,
-      amount: item.amount,
+      amount: item.amount.toString(),
       notes: item.notes,
     });
     setEditingId(item.id);
@@ -118,26 +121,55 @@ export default function Expenses() {
     setFormData({
       category: '',
       subcategory: '',
-      amount: 0,
+      amount: '',
       notes: '',
     });
     setEditingId(null);
     toast.success('Batch cleared');
   };
 
-  const submitBatch = () => {
+  const submitBatch = async () => {
     setShowConfirmModal(false);
-    // Mock API call
-    setTimeout(() => {
+    setSubmitting(true);
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+
+      const expenseDate = new Date().toISOString().split('T')[0];
+      
+      const expensesPayload = batch.map(item => ({
+        expense_date: expenseDate,
+        category: item.category,
+        amount: item.amount,
+        reference: item.subcategory || null,
+        notes: item.notes || null,
+        created_by: authUser.id,
+      }));
+
+      // Call submit_staff_forms RPC with _form_type signature
+      const { error } = await supabase.rpc('submit_staff_forms', {
+        _form_type: 'expense',
+        _payload: expensesPayload,
+      });
+
+      if (error) throw error;
+
       setShowSuccessModal(true);
       setBatch([]);
       setFormData({
         category: '',
         subcategory: '',
-        amount: 0,
+        amount: '',
         notes: '',
       });
-    }, 1000);
+      toast.success(`${batch.length} expense(s) logged successfully!`);
+    } catch (error: any) {
+      console.error('Error submitting expenses:', error);
+      toast.error(error.message || 'Failed to submit expenses');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalBatchValue = batch.reduce((sum, item) => sum + item.amount, 0);
@@ -205,10 +237,11 @@ export default function Expenses() {
               <Input
                 id="amount"
                 type="number"
-                step="0.01"
+                step="any"
                 min="0"
                 value={formData.amount}
-                onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                onWheel={(e) => e.currentTarget.blur()}
+                onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
               />
             </div>
 
@@ -217,7 +250,7 @@ export default function Expenses() {
               <Textarea
                 id="notes"
                 placeholder="Optional notes about this expense..."
-                value={formData.notes}
+                value={formData.notes ?? ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               />
             </div>
@@ -235,7 +268,7 @@ export default function Expenses() {
             <CardTitle>Batch Preview ({batch.length} expenses)</CardTitle>
             {batch.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                Total Amount: <span className="font-semibold text-foreground">${totalBatchValue.toFixed(2)}</span>
+                Total Amount: <span className="font-semibold text-foreground">{formatCurrency(totalBatchValue)}</span>
               </div>
             )}
           </CardHeader>
@@ -261,7 +294,7 @@ export default function Expenses() {
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.category}</TableCell>
                           <TableCell>{item.subcategory || '-'}</TableCell>
-                          <TableCell>${item.amount.toFixed(2)}</TableCell>
+                          <TableCell>{formatCurrency(item.amount)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
@@ -290,10 +323,18 @@ export default function Expenses() {
                   <Button
                     onClick={() => setShowConfirmModal(true)}
                     className="flex-1 gradient-primary"
+                    disabled={submitting}
                   >
-                    Submit All ({batch.length})
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>Submit All ({batch.length})</>
+                    )}
                   </Button>
-                  <Button variant="outline" onClick={resetBatch}>
+                  <Button variant="outline" onClick={resetBatch} disabled={submitting}>
                     Reset
                   </Button>
                 </div>
@@ -309,7 +350,7 @@ export default function Expenses() {
           <DialogHeader>
             <DialogTitle>Confirm Submission</DialogTitle>
             <DialogDescription>
-              You are about to submit {batch.length} expense entries totaling ${totalBatchValue.toFixed(2)}. Proceed?
+              You are about to submit {batch.length} expense entries totaling {formatCurrency(totalBatchValue)}. Proceed?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

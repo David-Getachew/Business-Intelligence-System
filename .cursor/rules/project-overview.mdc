@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+The Business Intelligence System MVP is designed to empower small business owners, particularly those operating single-location food businesses like burger shops or cafés, with automated, secure, and actionable insights. It addresses pain points such as high costs, time consumption, and inaccuracies in manual data processing by providing a centralized dashboard for real-time KPIs (e.g., revenue, COGS, gross profit, operating expenses, net profit) and automated daily/weekly emailed performance reports. Key features include transaction logging via forms (Quick Sales, Inventory Purchases, Operational Expenses), inventory and recipe management with stock alerts, advanced aggregation for COGS and profit calculations, and AI-driven weekly analysis. The system uses Supabase for unified data storage and authentication, n8n for automation and PDF generation, and emphasizes mobile responsiveness, role-based security, and fast performance. Out-of-scope items include multi-location support, full POS integration, and advanced predictive AI. The UI focuses on intuitive screens like the dashboard with graphs (e.g., daily income vs. expense, top revenue items, expense by category), form pages with batch previews, and reports/transactions pages, all built with a mobile-first approach for minimal clicks and clear hierarchy.

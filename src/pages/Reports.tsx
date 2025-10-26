@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { FileText, Download, Calendar, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Download, Calendar, Filter, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -26,7 +28,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { mockWeeklySummaries } from '@/mocks/summaries';
+import { fetchWeeklySummaries } from '@/api/index';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -37,26 +39,42 @@ export default function Reports() {
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filteredReports, setFilteredReports] = useState(mockWeeklySummaries);
+  const [weeklySummaries, setWeeklySummaries] = useState<any[]>([]);
+  const [filteredReports, setFilteredReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadWeeklySummaries();
+  }, []);
+
+  const loadWeeklySummaries = async () => {
+    try {
+      setLoading(true);
+      const summaries = await fetchWeeklySummaries();
+      setWeeklySummaries(summaries);
+      setFilteredReports(summaries);
+    } catch (error: any) {
+      console.error('Error loading weekly summaries:', error);
+      toast.error('Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownload = (report: any) => {
-    // Mock PDF download
-    toast.success(`Downloading report for week ${report.week_start} to ${report.week_end}`);
-    
-    // In a real app, this would trigger an actual download
-    const link = document.createElement('a');
-    link.href = '#'; // Would be the actual PDF URL
-    link.download = `weekly-report-${report.week_start}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (report.pdf_url) {
+      window.open(report.pdf_url, '_blank');
+      toast.success(`Opening report for week ${report.week_start} to ${report.week_end}`);
+    } else {
+      toast.error('PDF not available for this report');
+    }
   };
 
   const applyDateFilter = () => {
     if (!startDate && !endDate) {
-      setFilteredReports(mockWeeklySummaries);
+      setFilteredReports(weeklySummaries);
     } else {
-      const filtered = mockWeeklySummaries.filter(report => {
+      const filtered = weeklySummaries.filter(report => {
         const reportStart = new Date(report.week_start);
         const filterStart = startDate || new Date('1900-01-01');
         const filterEnd = endDate || new Date('2100-12-31');
@@ -72,7 +90,7 @@ export default function Reports() {
   const clearFilter = () => {
     setStartDate(undefined);
     setEndDate(undefined);
-    setFilteredReports(mockWeeklySummaries);
+    setFilteredReports(weeklySummaries);
     setShowFilterModal(false);
     toast.success('Filter cleared');
   };
@@ -86,6 +104,22 @@ export default function Reports() {
     const end = new Date(endDate);
     return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-heading font-bold">Reports</h1>
+          <p className="text-muted-foreground mt-1">Loading weekly summaries...</p>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

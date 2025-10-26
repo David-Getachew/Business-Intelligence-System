@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+This document outlines the guidelines for implementing form handling in the Business Intelligence System MVP frontend (using Dyad or equivalent framework). Forms are central to core transaction logging, emphasizing efficiency, validation, duplicate prevention, and role-based access. All forms should support batch submission with preview tables for quick review before commit, reducing errors and improving UX for time-poor users. Implement using reactive state management (e.g., stores or context), with Supabase for backend inserts via API routes. Enforce RBAC: Staff users can only access and submit forms (Quick Sales, Inventory Purchase, Operational Expense, Menu/Recipe viewing, and ingredient updates(read only) on Inventory Page); redirect or hide forms if role is invalid. Admins have full access, including editing batches.
+General Form Principles
+
+Batch Submission and Preview Tables: All multi-entry forms (e.g., Quick Sales, Inventory Purchase) must include a preview table below the inputs. As users add entries, update the table reactively without submission. Include columns for key fields (e.g., item, quantity, price, date) and actions like edit/delete per row. Prevent duplicates by checking against existing preview rows (e.g., via unique key on item+date). On submit, batch-insert to Supabase tables (e.g., via clear RPC endpoints for each type of form filled) and clear the preview.
+Validation: Use client-side validation for required fields, numeric inputs (e.g., quantity > 0), and date formats. Display inline errors (e.g., red text below inputs). Server-side re-validate on submission to handle edge cases. For dropdowns, ensure searchable/selectable options with quick-fill buttons for common items.
+UX Optimizations: Mobile-first design with responsive layouts (e.g., stack inputs vertically on small screens). Minimal clicks: Auto-focus next input, use modals for confirmations. Notifications for success/errors (e.g., toast messages). Integrate with inventory deduction logic (e.g., on sales submit, trigger COGS update if menu/recipe linked).
+Error Handling: Handle aggregation errors post-submit (e.g., if inventory deduction fails due to low stock). Notify users of reconciliation issues via alerts.

@@ -1,4 +1,4 @@
-import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
+import { LucideIcon, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -11,10 +11,43 @@ interface KPICardProps {
 }
 
 export function KPICard({ title, value, change, icon: Icon, trend }: KPICardProps) {
-  const TrendIcon = trend === 'up' ? TrendingUp : TrendingDown;
-  const isPositive = trend === 'up';
   const isNetProfit = title === 'Net Profit';
   const isProfit = value >= 0;
+  
+  // Determine if this is a cost metric (COGS, Operating Expenses)
+  const isCostMetric = title === 'COGS' || title === 'Operating Expense';
+  
+  // Calculate display values
+  const absoluteChange = Math.abs(change);
+  const isPositiveChange = change > 0;
+  const isZeroChange = change === 0;
+  
+  // Determine color and arrow logic
+  let colorClass = '';
+  let ArrowIcon = Minus;
+  
+  if (isZeroChange) {
+    colorClass = 'text-muted-foreground';
+    ArrowIcon = Minus;
+  } else if (isCostMetric) {
+    // For costs: decrease is good (green), increase is bad (red)
+    if (isPositiveChange) {
+      colorClass = 'text-destructive'; // Cost increased = bad
+      ArrowIcon = ArrowUp;
+    } else {
+      colorClass = 'text-success'; // Cost decreased = good
+      ArrowIcon = ArrowDown;
+    }
+  } else {
+    // For revenue/profit: increase is good (green), decrease is bad (red)
+    if (isPositiveChange) {
+      colorClass = 'text-success'; // Revenue/profit increased = good
+      ArrowIcon = ArrowUp;
+    } else {
+      colorClass = 'text-destructive'; // Revenue/profit decreased = bad
+      ArrowIcon = ArrowDown;
+    }
+  }
 
   return (
     <Card className="shadow-card hover:shadow-glow transition-shadow">
@@ -28,13 +61,13 @@ export function KPICard({ title, value, change, icon: Icon, trend }: KPICardProp
             "text-2xl font-heading font-bold",
             isNetProfit && isProfit ? "text-success" : isNetProfit && !isProfit ? "text-destructive" : ""
           )}>
-            ${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Birr
             {isNetProfit && !isProfit && " (Loss)"}
           </p>
           <div className="flex items-center gap-1 text-xs">
-            <TrendIcon className={cn('h-3 w-3', isPositive ? 'text-success' : 'text-destructive')} />
-            <span className={cn('font-medium', isPositive ? 'text-success' : 'text-destructive')}>
-              {change}%
+            <ArrowIcon className={cn('h-3 w-3', colorClass)} />
+            <span className={cn('font-medium', colorClass)}>
+              {absoluteChange.toFixed(1)}%
             </span>
             <span className="text-muted-foreground">vs last period</span>
           </div>
