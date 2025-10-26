@@ -89,13 +89,7 @@ export function RecentTransactions() {
                   };
 
                   return (
-                    <TableRow key={sale.id} className="relative">
-                      {index === 5 && (
-                        <div className="absolute inset-x-0 top-0 h-16 backdrop-blur-md bg-opacity-50 bg-gradient-to-r from-muted/30 via-muted/10 to-muted/30 pointer-events-none" />
-                      )}
-                      {index === 6 && (
-                        <div className="absolute inset-x-0 top-0 h-8 backdrop-blur-md bg-opacity-50 bg-gradient-to-r from-muted/30 via-muted/10 to-muted/30 pointer-events-none" />
-                      )}
+                    <TableRow key={sale.id}>
                       <TableCell className="text-sm">{formatSaleDate(sale)}</TableCell>
                       <TableCell className="font-medium">{sale.menu_item}</TableCell>
                       <TableCell>{sale.quantity}</TableCell>

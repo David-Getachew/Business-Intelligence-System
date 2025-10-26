@@ -3,19 +3,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug logging to see what Vite loaded
-console.log('🔍 Supabase Init Debug:', {
-  url: supabaseUrl,
-  hasKey: Boolean(supabaseAnonKey),
-  keyLength: supabaseAnonKey?.length,
-  urlType: typeof supabaseUrl,
-  keyType: typeof supabaseAnonKey,
-});
-
 // Safe initialization - don't crash if env vars missing
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-
-console.log('✅ isSupabaseConfigured:', isSupabaseConfigured);
 
 // Log configuration status at startup
 if (!isSupabaseConfigured) {
@@ -23,10 +12,6 @@ if (!isSupabaseConfigured) {
     '⚠️ Supabase not configured. Set VITE_PUBLIC_SUPABASE_URL and VITE_PUBLIC_SUPABASE_ANON_KEY in .env.local'
   );
   console.error('Copy .env.example to .env.local and add your credentials');
-  console.error('Current values:', {
-    url: supabaseUrl || 'MISSING',
-    key: supabaseAnonKey ? 'SET (length: ' + supabaseAnonKey.length + ')' : 'MISSING'
-  });
 }
 
 // Create client only if configured, otherwise export null

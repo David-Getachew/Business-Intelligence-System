@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalendarIcon, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,51 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   );
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+
+  // Sync preset state with value prop
+  useEffect(() => {
+    if (!value.start && !value.end) {
+      setPreset('all-time');
+    } else if (value.start && value.end) {
+      // Check if it matches any preset
+      const startDate = new Date(value.start);
+      const endDate = new Date(value.end);
+      const today = new Date();
+      
+      // Normalize dates to remove time component
+      const startNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      // Check if it's today
+      if (startNormalized.getTime() === todayNormalized.getTime() && 
+          endNormalized.getTime() === todayNormalized.getTime()) {
+        setPreset('today');
+        return;
+      }
+      
+      // Check if it's this week (7 days)
+      const weekAgo = new Date(todayNormalized);
+      weekAgo.setDate(todayNormalized.getDate() - 7);
+      if (startNormalized.getTime() === weekAgo.getTime() && 
+          endNormalized.getTime() === todayNormalized.getTime()) {
+        setPreset('week');
+        return;
+      }
+      
+      // Check if it's this month
+      const monthAgo = new Date(todayNormalized);
+      monthAgo.setMonth(todayNormalized.getMonth() - 1);
+      if (startNormalized.getTime() === monthAgo.getTime() && 
+          endNormalized.getTime() === todayNormalized.getTime()) {
+        setPreset('month');
+        return;
+      }
+      
+      // Otherwise, it's custom
+      setPreset('custom');
+    }
+  }, [value]);
 
   const handlePreset = (presetName: string) => {
     setPreset(presetName);

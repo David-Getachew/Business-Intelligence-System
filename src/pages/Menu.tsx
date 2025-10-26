@@ -65,10 +65,16 @@ export default function Menu() {
   });
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [togglingItemId, setTogglingItemId] = useState<string | null>(null);
+  const [customCategory, setCustomCategory] = useState('');
 
-  const categories = ['Beverages', 'Food', 'Desserts', 'Appetizers', 'Main Course', 'Sides', 'Other'];
+  const categories = ['Food', 'Beverage', 'Snack', 'Dessert', 'Other'];
+
+  // Effect to ensure custom category input visibility
+  useEffect(() => {
+    // This effect will run whenever menuForm.category or customCategory changes
+    // It's intentionally empty but helps with component re-rendering consistency
+  }, [menuForm.category, customCategory]);
 
   useEffect(() => {
     loadData();
@@ -196,17 +202,21 @@ export default function Menu() {
 
       const isUpdate = editingMenuId !== null;
       
-      await saveMenuItem({
+      if (menuForm.category === 'Other' && !customCategory.trim()) {
+        toast.error('Please specify a custom category');
+        return;
+      }
+
+      // Use custom category if 'Other' is selected
+      const categoryToSave = menuForm.category === 'Other' ? customCategory : menuForm.category;      await saveMenuItem({
         id: editingMenuId ? parseInt(editingMenuId) : null, // Omit for creation, include for update
         name: menuForm.name,
         price: menuForm.basePrice,
-        category: menuForm.category,
+        category: categoryToSave,
         active: menuForm.active,
         recipe: dedupedRecipe,
       });
 
-      setSuccessMessage(`Menu item ${isUpdate ? 'updated' : 'created'} successfully`);
-      setShowSuccessModal(true);
       setMenuForm({
         name: '',
         basePrice: 0,
@@ -215,6 +225,7 @@ export default function Menu() {
       });
       setRecipeIngredients([]);
       setEditingMenuId(null);
+      setCustomCategory('');
       
       await loadData();
       toast.success(`Menu item ${isUpdate ? 'updated' : 'created'} successfully!`);
@@ -241,13 +252,18 @@ export default function Menu() {
       return;
     }
 
+    // Check if the category is one of the predefined categories
+    const isPredefinedCategory = categories.includes(item.category);
+    
     setMenuForm({
       name: item.name,
       basePrice: item.price,
-      category: item.category,
+      category: isPredefinedCategory ? item.category : 'Other',
       active: item.active,
     });
     
+    // If it's not a predefined category, set it as custom category
+    setCustomCategory(isPredefinedCategory ? '' : item.category);    
     // Prefill from view for authoritative data
     (async () => {
       try {
@@ -271,16 +287,33 @@ export default function Menu() {
   };
 
   const toggleMenuItemActive = async (id: string, currentStatus: boolean) => {
-    if (!isAdmin) {
-      toast.error('You do not have permission to modify menu items.');
+    // Added loading guard to prevent concurrent toggles
+    if (togglingItemId || !isAdmin) {
+      if (!isAdmin) {
+        toast.error('You do not have permission to modify menu items.');
+      }
       return;
     }
 
+    setTogglingItemId(id); // Set toggling item ID to prevent concurrent saves
+    
+    // Save previous menu items for rollback
+    const prevMenuItems = [...menuItems];
+    
+    // Apply optimistic update
+    setMenuItems(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, active: !currentStatus } : item
+      )
+    );
+    
     try {
       // Find the menu item to get its current data
       const menuItem = menuItems.find(item => item.id === id);
       if (!menuItem) {
         toast.error('Menu item not found');
+        // Revert optimistic update on error
+        setMenuItems(prevMenuItems);
         return;
       }
 
@@ -296,6 +329,8 @@ export default function Menu() {
       } catch (err) {
         console.error('Failed to fetch current recipe, aborting toggle:', err);
         toast.error('Failed to retrieve menu item recipe');
+        // Revert optimistic update on error
+        setMenuItems(prevMenuItems);
         return;
       }
       // Update the menu item with ALL current data but toggled active status
@@ -311,13 +346,6 @@ export default function Menu() {
         }))
       });
 
-      // Update local state to reflect the change
-      setMenuItems(prev => 
-        prev.map(item => 
-          item.id === id ? { ...item, active: !currentStatus } : item
-        )
-      );
-      
       const message = currentStatus 
         ? 'Menu item deactivated successfully' 
         : 'Menu item activated successfully';
@@ -327,7 +355,12 @@ export default function Menu() {
       await loadData();
     } catch (error: any) {
       console.error('Error toggling menu item status:', error);
+      // Revert optimistic update on error
+      setMenuItems(prevMenuItems);
       toast.error(error.message || 'Failed to update menu item status');
+    } finally {
+      // Clear toggling item ID in finally block to ensure it's always cleared
+      setTogglingItemId(null);
     }
   };
 
@@ -392,7 +425,13 @@ export default function Menu() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
-                    <Select value={menuForm.category} onValueChange={(value) => setMenuForm(prev => ({ ...prev, category: value }))}>
+                    <Select key="category-select" value={menuForm.category} onValueChange={(value) => {
+                      setMenuForm(prev => ({ ...prev, category: value }));
+                      // Clear custom category when switching categories
+                      if (value !== 'Other') {
+                        setCustomCategory('');
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -404,6 +443,17 @@ export default function Menu() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {menuForm.category === 'Other' && (
+                      <Input
+                        key="custom-category-input"
+                        placeholder="Specify custom category"
+                        value={customCategory}
+                        onChange={(e) => {
+                          setCustomCategory(e.target.value);
+                        }}
+                        className="mt-2"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -533,7 +583,7 @@ export default function Menu() {
                         <Switch
                           checked={item.active ?? true}
                           onCheckedChange={() => toggleMenuItemActive(item.id, item.active)}
-                          disabled={!isAdmin}
+                          disabled={togglingItemId === item.id || !isAdmin}
                         />
                       </TableCell>
                       {isAdmin && (
@@ -582,22 +632,6 @@ export default function Menu() {
           </DialogContent>
         </Dialog>
 
-        {/* Success Modal */}
-        <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Success</DialogTitle>
-              <DialogDescription>
-                {successMessage}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => setShowSuccessModal(false)} className="gradient-primary">
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </TooltipProvider>
   );

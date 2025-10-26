@@ -8,6 +8,11 @@ const COLORS = [
   'hsl(var(--success))',
   'hsl(var(--warning))',
   'hsl(var(--muted-foreground))',
+  'hsl(var(--destructive))',
+  'hsl(var(--primary) / 0.8)',
+  'hsl(var(--accent) / 0.8)',
+  'hsl(var(--success) / 0.8)',
+  'hsl(var(--warning) / 0.8)',
 ];
 
 interface ExpensesPieChartProps {
@@ -83,15 +88,18 @@ export function ExpensesPieChart({ dailySummaries = [] }: ExpensesPieChartProps)
             paddingAngle={2}
             dataKey="value"
             labelLine={true}
-            label={({ name, percentage, cx, cy, midAngle, outerRadius }) => {
+            label={({ name, percentage, cx, cy, midAngle, outerRadius, viewBox }) => {
               const RADIAN = Math.PI / 180;
-              const radius = outerRadius + 25;
+              const radius = outerRadius + 35;
               const x = cx + radius * Math.cos(-midAngle * RADIAN);
               const y = cy + radius * Math.sin(-midAngle * RADIAN);
               
+              // Ensure text fits within chart boundaries
+              const adjustedX = viewBox?.width ? Math.max(20, Math.min(x, viewBox.width - 20)) : x;
+              
               return (
                 <text 
-                  x={x} 
+                  x={adjustedX} 
                   y={y} 
                   fill="hsl(var(--foreground))" 
                   textAnchor={x > cx ? 'start' : 'end'} 

@@ -8,13 +8,13 @@ export function TopItemsChart({ data }: TopItemsChartProps) {
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={data} layout="vertical" margin={{ top: 20, right: 30, left: 100, bottom: 5 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 20, right: 30, left: 33, bottom: 5 }}>
           <XAxis type="number" className="text-xs" />
           <YAxis
             type="category"
             dataKey="name"
             className="text-xs"
-            width={90}
+            width={50}
             tick={{ fill: 'hsl(var(--foreground))' }}
           />
           <Tooltip

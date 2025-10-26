@@ -137,14 +137,6 @@ export default function Transactions() {
         const qty = Number(fullRow.qty || 0);
         const unitPrice = Number(fullRow.unit_price || 0);
         
-        // Debug log to verify transaction data
-        console.log('Sales transaction data:', {
-          id: fullRow.id,
-          menu_item_id: fullRow.menu_item_id,
-          qty: qty,
-          unit_price: unitPrice,
-          sale_date: fullRow.created_at?.split('T')[0]
-        });
         
         setEditForm({
           id: fullRow.id, // This is the sale_line_items.id (transactionId)
@@ -193,25 +185,11 @@ export default function Transactions() {
           sale_date: editForm.sale_date, // string/date
         };
         
-        // Debug log to verify payload
-        console.log('Sales edit payload:', {
-          _line_id: transactionId,
-          _payload: payload,
-          menu_item_id_verified: menuItemId
-        });
         
-        // Debug: Log the exact RPC call parameters
-        console.log('RPC call parameters:', {
-          _line_id: transactionId,
-          _payload: payload,
-          _line_id_type: typeof transactionId,
-          _payload_type: typeof payload
-        });
         
         const { data, error } = await supabase!.rpc('update_sale_line_item', { _line_id: transactionId, _payload: payload });
         
         if (data) {
-          console.log('RPC response data:', data);
           // Check if the response indicates insufficient stock
           if (data.status === 'error' && data.message?.includes('Insufficient stock')) {
             setInsufficientStockMessage(data.message);
@@ -278,15 +256,14 @@ export default function Transactions() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-heading font-bold">Transactions</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage all business transactions
-          </p>
-          </div>
-          {/* Global date picker - matching dashboard styling */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-heading font-bold">Transactions</h1>
+              <p className="text-muted-foreground mt-1">
+                View and manage all business transactions
+              </p>
+            </div>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
         </div>

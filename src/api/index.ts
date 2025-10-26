@@ -298,7 +298,6 @@ export async function fetchInventory() {
       throw error;
     }
 
-    console.log('[API] fetchInventory data:', data);
 
     return (data || []).map(item => ({
       ingredient_id: item.ingredient_id,
@@ -403,15 +402,6 @@ export async function adjustIngredientStock(
       throw new Error('Supabase is not configured. Please check your environment variables.');
     }
 
-    console.log('[API] adjustIngredientStock payload:', {
-      _adjust_qty, // signed numeric for IN/OUT/ADJUST
-      _ingredient_id, // integer
-      _notes, // text
-      _unit_cost, // numeric, nullable
-      _adjust_qty_type: typeof _adjust_qty,
-      _adjust_qty_value: _adjust_qty,
-      _adjust_qty_is_negative: _adjust_qty < 0
-    });
 
     const { data, error } = await supabase.rpc('adjust_ingredient_stock', {
       _ingredient_id, // integer
@@ -425,7 +415,6 @@ export async function adjustIngredientStock(
       throw error;
     }
 
-    console.log('[API] adjustIngredientStock response:', data);
 
     // Verify response structure
     if (data?.status === 'ok') {

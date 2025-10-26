@@ -65,15 +65,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         />
       )}
 
-      {/* Mobile hamburger button - Fixed positioning */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={onClose}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
 
       {/* Fixed positioned sidebar with proper flex layout */}
       <aside
@@ -94,15 +85,15 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         }}
       >
         {/* Top: Website title/logo - Fixed height container */}
-        <div className="flex items-center h-16 border-b px-4 flex-shrink-0">
+        <div className="flex items-center h-16 border-b px-3 flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0 w-full">
             {/* Fixed width icon container - always left-aligned */}
-            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-primary-foreground font-heading font-bold text-lg">S</span>
+            <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+              <img src="/sunsetcircle.png" alt="Sunset Sips n' Bites" className="h-10 w-10 object-contain" />
             </div>
             {/* Text that expands on hover - positioned after icon */}
             <h1 className={cn(
-              "font-heading font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent transition-all duration-300 whitespace-nowrap",
+              "font-heading font-bold text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent transition-all duration-300 whitespace-nowrap",
               "md:opacity-0 md:w-0 md:overflow-hidden",
               isHovered && "md:opacity-100 md:w-auto"
             )}>
