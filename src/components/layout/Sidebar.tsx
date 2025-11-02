@@ -14,7 +14,9 @@ import {
   Moon,
   Sun,
   LogOut,
-  Menu
+  Menu,
+  Zap,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -30,6 +32,8 @@ interface SidebarProps {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Quick Sales', href: '/sales/quick', icon: ShoppingCart },
+  { name: 'POS Sale', href: '/sales/pos', icon: Zap },
+  { name: 'Stock Count', href: '/stock/count', icon: BarChart3 },
   { name: 'Purchases', href: '/purchases/new', icon: Package },
   { name: 'Expenses', href: '/expenses/new', icon: Receipt },
   { name: 'Menu & Recipes', href: '/menu', icon: UtensilsCrossed },
@@ -111,7 +115,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               onClick={() => onClose?.()}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center rounded-lg px-1 py-2 mx-2 text-sm font-medium transition-all',                  'justify-start', // Always left-align, never center
+                  'flex items-center rounded-lg px-1 py-2 mx-2 text-sm font-medium transition-all',
+                  'justify-start', // Always left-align, never center
                   isActive
                     ? 'gradient-primary text-primary-foreground shadow-glow'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
