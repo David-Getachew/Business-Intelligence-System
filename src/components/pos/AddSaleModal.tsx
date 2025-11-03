@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 interface AddSaleModalProps {
   open: boolean;
@@ -27,17 +26,14 @@ export function AddSaleModal({
   onAddToBuffer,
 }: AddSaleModalProps) {
   const [quantity, setQuantity] = useState(1);
-  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleAddToBuffer = () => {
     if (quantity <= 0) return;
     setSubmitting(true);
-    // Simulate brief processing
     setTimeout(() => {
-      onAddToBuffer(quantity, note || undefined);
+      onAddToBuffer(quantity);
       setQuantity(1);
-      setNote('');
       setSubmitting(false);
     }, 300);
   };
@@ -130,19 +126,6 @@ export function AddSaleModal({
                 {subtotal.toFixed(2)} Birr
               </span>
             </div>
-          </div>
-
-          {/* Optional Note */}
-          <div className="space-y-2">
-            <Label htmlFor="note">Optional Note</Label>
-            <Textarea
-              id="note"
-              placeholder="e.g., No onions, extra sauce..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="resize-none"
-              rows={3}
-            />
           </div>
         </div>
 

@@ -19,18 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockMenuItems } from '@/data/mockMenuItems';
+
+interface Ingredient {
+  id: number;
+  name: string;
+  base_unit: string;
+}
 
 interface AddCountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddCount: (data: {
-    date: string;
-    itemName: string;
+    ingredientId: number;
+    ingredientName: string;
     quantity: number;
     unit: string;
     notes?: string;
   }) => void;
+  ingredients: Ingredient[];
 }
 
 const UNITS = ['kg', 'g', 'L', 'ml', 'pcs', 'box', 'dozen'];
@@ -39,40 +45,45 @@ export function AddCountModal({
   open,
   onOpenChange,
   onAddCount,
+  ingredients,
 }: AddCountModalProps) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [itemName, setItemName] = useState('');
+  const [selectedIngredientId, setSelectedIngredientId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('kg');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSaveCount = () => {
-    if (!itemName || !quantity || !unit) {
+  const handleSaveCount = async () => {
+    if (!selectedIngredientId || !quantity || !unit) {
+      return;
+    }
+
+    const ingredient = ingredients.find(ing => ing.id.toString() === selectedIngredientId);
+    if (!ingredient) return;
+
+    const parsedQuantity = parseFloat(quantity);
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
       return;
     }
 
     setSubmitting(true);
-    // Simulate brief processing
-    setTimeout(() => {
-      onAddCount({
-        date,
-        itemName,
-        quantity: parseFloat(quantity),
+    try {
+      await onAddCount({
+        ingredientId: ingredient.id,
+        ingredientName: ingredient.name,
+        quantity: parsedQuantity,
         unit,
         notes: notes || undefined,
       });
 
-      // Reset form
-      setDate(new Date().toISOString().split('T')[0]);
-      setItemName('');
+      setSelectedIngredientId('');
       setQuantity('');
       setUnit('kg');
       setNotes('');
+    } finally {
       setSubmitting(false);
-    }, 300);
+    }
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -84,28 +95,17 @@ export function AddCountModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Date Picker */}
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-
           {/* Item Selector */}
           <div className="space-y-2">
-            <Label htmlFor="itemName">Item Name</Label>
-            <Select value={itemName} onValueChange={setItemName}>
+            <Label htmlFor="ingredient">Ingredient</Label>
+            <Select value={selectedIngredientId} onValueChange={setSelectedIngredientId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select an item" />
+                <SelectValue placeholder="Select an ingredient" />
               </SelectTrigger>
               <SelectContent>
-                {mockMenuItems.map((item) => (
-                  <SelectItem key={item.id} value={item.name}>
-                    {item.name}
+                {ingredients.map((ing) => (
+                  <SelectItem key={ing.id} value={ing.id.toString()}>
+                    {ing.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -168,7 +168,7 @@ export function AddCountModal({
           <Button
             onClick={handleSaveCount}
             className="gradient-primary"
-            disabled={submitting || !itemName || !quantity || !unit}
+            disabled={submitting || !selectedIngredientId || !quantity || !unit}
           >
             {submitting ? (
               <>

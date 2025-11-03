@@ -10,6 +10,7 @@ interface BufferItem {
   price: number;
   quantity: number;
   note?: string;
+  taxRate?: number;
 }
 
 interface BufferPanelProps {
@@ -24,9 +25,13 @@ export function BufferPanel({
   onRemove,
   onClear,
   onUpdateQuantity,
-}: BufferPanelProps) {
+  onConfirmSale,
+}: BufferPanelProps & { onConfirmSale?: () => void }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.1; // 10% tax
+  const taxRate = items.length > 0 
+    ? items.reduce((sum, item) => sum + (item.taxRate || 0), 0) / items.length
+    : 0;
+  const tax = (subtotal * taxRate) / 100;
   const total = subtotal + tax;
 
   return (
@@ -99,13 +104,13 @@ export function BufferPanel({
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{subtotal.toFixed(2)} Birr</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tax (10%)</span>
-                <span className="font-medium">{tax.toFixed(2)} Birr</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-base">
-                <span className="font-semibold">Total</span>
+              {tax > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="font-medium">{tax.toFixed(2)} Birr</span>
+                </div>
+              )}              <div className="flex justify-between text-base">
+                <span className="font-semibold">Total after tax</span>
                 <span className="font-bold text-primary text-lg">
                   {total.toFixed(2)} Birr
                 </span>
@@ -114,7 +119,11 @@ export function BufferPanel({
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-2">
-              <Button className="w-full gradient-primary" disabled>
+              <Button 
+                className="w-full gradient-primary" 
+                onClick={onConfirmSale}
+                disabled={!onConfirmSale}
+              >
                 Confirm Sale
               </Button>
               <Button

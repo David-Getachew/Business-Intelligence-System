@@ -56,6 +56,7 @@ export default function Menu() {
     basePrice: 0,
     category: '',
     active: true,
+    taxRate: '',
   });
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [ingredientForm, setIngredientForm] = useState({
@@ -188,17 +189,10 @@ export default function Menu() {
     setSubmitting(true);
 
     try {
-      // De-duplicate recipe rows by ingredient_id before save
-      const dedupedRecipe = Object.values(
-        recipeIngredients.reduce((acc: Record<number, { ingredient_id: number; qty_per_item: number }>, ing) => {
-          if (!acc[ing.ingredient_id]) {
-            acc[ing.ingredient_id] = { ingredient_id: ing.ingredient_id, qty_per_item: ing.quantityPerItem };
-          } else {
-            acc[ing.ingredient_id].qty_per_item += ing.quantityPerItem;
-          }
-          return acc;
-        }, {})
-      ) as { ingredient_id: number; qty_per_item: number }[];
+      const dedupedRecipe = recipeIngredients.map(ing => ({ 
+        ingredient_id: ing.ingredient_id, 
+        qty_per_item: Number(ing.quantityPerItem)
+      }));
 
       const isUpdate = editingMenuId !== null;
       
@@ -215,14 +209,15 @@ export default function Menu() {
         category: categoryToSave,
         active: menuForm.active,
         recipe: dedupedRecipe,
-      });
+        tax_rate: menuForm.taxRate && !isNaN(parseFloat(menuForm.taxRate)) ? parseFloat(menuForm.taxRate) : undefined,      });
 
-      setMenuForm({
-        name: '',
-        basePrice: 0,
-        category: '',
-        active: true,
-      });
+    setMenuForm({
+      name: '',
+      basePrice: 0,
+      category: '',
+      active: true,
+      taxRate: '',
+    });
       setRecipeIngredients([]);
       setEditingMenuId(null);
       setCustomCategory('');
@@ -260,6 +255,7 @@ export default function Menu() {
       basePrice: item.price,
       category: isPredefinedCategory ? item.category : 'Other',
       active: item.active,
+      taxRate: item.tax_rate?.toString() || '',
     });
     
     // If it's not a predefined category, set it as custom category
@@ -455,6 +451,21 @@ export default function Menu() {
                       />
                     )}
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="taxRate">Tax Rate (%) (Optional)</Label>
+                  <Input
+                    id="taxRate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={menuForm.taxRate}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(e) => setMenuForm(prev => ({ ...prev, taxRate: e.target.value }))}
+                    placeholder="e.g., 15"
+                  />
                 </div>
 
                 <Button 

@@ -208,6 +208,7 @@ export interface MenuItemPayload {
   category: string;
   active: boolean;
   recipe: RecipeIngredient[];
+  tax_rate?: number;
 }
 
 /**
@@ -242,8 +243,9 @@ export async function saveMenuItem(payload: MenuItemPayload): Promise<{
       p_active: payload.active,
       p_recipe: validRecipes as unknown as any,
       // Only include p_menu_item_id for updates, omit for creation
-      ...(payload.id && { p_menu_item_id: payload.id })
-    };
+      ...(payload.id !== undefined && { p_menu_item_id: payload.id }),
+      // Include tax_rate if provided
+      ...(payload.tax_rate !== undefined && { p_tax_rate: payload.tax_rate })    };
 
     const { data, error } = await supabase.rpc('save_menu_item_and_recipe', rpcArgs);
     if (error) throw error;
@@ -691,6 +693,8 @@ export async function fetchMenuItems() {
         price,
         category,
         active,
+        image_url,
+        tax_rate,
         created_at
       `)
       .order('name', { ascending: true });
@@ -804,6 +808,44 @@ export async function fetchIngredients() {
     return data || [];
   } catch (error: any) {
     console.error('[API] fetchIngredients error:', error);
+    throw error;
+  }
+}
+
+export async function fetchStockCounts() {
+  try {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Please check your environment variables.');
+    }
+    const { data, error } = await supabase
+      .from('stock_counts')
+      .select(`
+        id,
+        ingredient_id,
+        count_date,
+        quantity,
+        unit,
+        notes,
+        recorded_by,
+        created_at,
+        ingredients!inner(name)
+      `)
+      .order('count_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((item: any) => ({
+      id: item.id,
+      date: item.count_date,
+      itemName: (item.ingredients as any)?.name || 'Unknown',
+      quantity: item.quantity,
+      unit: item.unit,
+      notes: item.notes,
+      loggedBy: item.recorded_by ? 'User' : 'System',
+    }));
+  } catch (error: any) {
+    console.error('[API] fetchStockCounts error:', error);
     throw error;
   }
 }

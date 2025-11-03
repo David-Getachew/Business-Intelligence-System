@@ -1,10 +1,13 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StockLogTable } from '@/components/stock/StockLogTable';
 import { AddCountModal } from '@/components/stock/AddCountModal';
-import { mockStockLogs } from '@/data/mockStockLogs';
+import { fetchIngredients, fetchStockCounts } from '@/api/index';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface StockLog {
   id: string;
@@ -17,31 +20,73 @@ interface StockLog {
 }
 
 export default function StockCount() {
+  const { user } = useAuth();
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [stockLogs, setStockLogs] = useState<StockLog[]>(mockStockLogs);
+  const [stockLogs, setStockLogs] = useState<StockLog[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const handleAddCount = (data: {
-    date: string;
-    itemName: string;
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [ingredientsData, stockCountsData] = await Promise.all([
+        fetchIngredients(),
+        fetchStockCounts(),
+      ]);
+      setIngredients(ingredientsData.filter((item: any) => item.active));
+      setStockLogs(stockCountsData);
+      setCurrentPage(1);
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddCount = async (data: {
+    ingredientId: number;
+    ingredientName: string;
     quantity: number;
     unit: string;
     notes?: string;
   }) => {
-    const newLog: StockLog = {
-      id: `log-${Date.now()}`,
-      date: data.date,
-      itemName: data.itemName,
-      quantity: data.quantity,
-      unit: data.unit,
-      notes: data.notes,
-      loggedBy: 'Current User', // Placeholder - would be actual user in production
-    };
+    if (!user) {
+      toast.error('You must be logged in to log stock counts');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = [{
+        ingredient_id: data.ingredientId,
+        quantity: data.quantity,
+        unit: data.unit,
+        notes: data.notes,
+        recorded_by: user.id,
+      }];
 
-    setStockLogs([newLog, ...stockLogs]);
-    setShowAddModal(false);
-    setCurrentPage(1);
+      const { error } = await supabase!.rpc('log_stock_count', {
+        p_counts: payload,
+      });
+
+      if (error) throw error;
+
+      toast.success('Stock count logged successfully!');
+      setShowAddModal(false);
+      await loadData();
+    } catch (error: any) {
+      console.error('Error logging stock count:', error);
+      toast.error(error.message || 'Failed to log stock count');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalPages = Math.ceil(stockLogs.length / itemsPerPage);
@@ -49,6 +94,14 @@ export default function StockCount() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -89,6 +142,7 @@ export default function StockCount() {
         open={showAddModal}
         onOpenChange={setShowAddModal}
         onAddCount={handleAddCount}
+        ingredients={ingredients}
       />
     </div>
   );
