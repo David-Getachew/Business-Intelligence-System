@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, ShoppingCart, Trash2, X, Loader2 } from 'lucide-react';
+import { Plus, ShoppingCart, Trash2, X, Loader2, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { MenuItemCard } from '@/components/pos/MenuItemCard';
 import { AddSaleModal } from '@/components/pos/AddSaleModal';
 import { BufferPanel } from '@/components/pos/BufferPanel';
@@ -23,15 +24,41 @@ interface BufferItem {
 export default function POSSale() {
   const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [filteredMenuItems, setFilteredMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<any>(null);
   const [bufferItems, setBufferItems] = useState<BufferItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [editingItem, setEditingItem] = useState<BufferItem | null>(null); // For editing buffer items
+
+  // Get unique categories from menu items
+  const categories = ['All', ...Array.from(new Set(menuItems.map(item => item.category)))];
 
   useEffect(() => {
     loadMenuItems();
   }, []);
+
+  // Filter menu items based on search term and category
+  useEffect(() => {
+    let filtered = menuItems;
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply category filter
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter(item => item.category === selectedCategory);
+    }
+    
+    setFilteredMenuItems(filtered);
+  }, [menuItems, searchTerm, selectedCategory]);
 
   const loadMenuItems = async () => {
     try {
@@ -48,24 +75,47 @@ export default function POSSale() {
 
   const handleAddMenuItem = (menuItem: any) => {
     setSelectedMenuItem(menuItem);
+    setEditingItem(null); // Clear editing state
     setShowAddModal(true);
+  };
+
+  const handleEditBufferItem = (item: BufferItem) => {
+    // Find the original menu item to get all details
+    const originalMenuItem = menuItems.find(m => m.id === item.menuItemId);
+    if (originalMenuItem) {
+      setSelectedMenuItem(originalMenuItem);
+      setEditingItem(item); // Set the item being edited
+      setShowAddModal(true);
+    }
   };
 
   const handleAddToBuffer = (quantity: number) => {
     if (!selectedMenuItem || quantity <= 0) return;
 
-    const newItem: BufferItem = {
-      id: `${selectedMenuItem.id}-${Date.now()}`,
-      menuItemId: selectedMenuItem.id,
-      name: selectedMenuItem.name,
-      price: selectedMenuItem.price,
-      quantity,
-      taxRate: selectedMenuItem.tax_rate,
-    };
+    if (editingItem) {
+      // Update existing item in buffer
+      setBufferItems(bufferItems.map(item => 
+        item.id === editingItem.id 
+          ? { ...item, quantity } 
+          : item
+      ));
+    } else {
+      // Add new item to buffer
+      const newItem: BufferItem = {
+        id: `${selectedMenuItem.id}-${Date.now()}`,
+        menuItemId: selectedMenuItem.id,
+        name: selectedMenuItem.name,
+        price: selectedMenuItem.price,
+        quantity,
+        taxRate: selectedMenuItem.tax_rate,
+      };
 
-    setBufferItems([...bufferItems, newItem]);
+      setBufferItems([...bufferItems, newItem]);
+    }
+
     setShowAddModal(false);
     setSelectedMenuItem(null);
+    setEditingItem(null);
   };
 
   const handleRemoveFromBuffer = (id: string) => {
@@ -136,16 +186,38 @@ export default function POSSale() {
     <div className="flex flex-col lg:flex-row gap-6 min-h-screen">
       {/* Main Content */}
       <div className="flex-1">
-        <div className="mb-6">
-          <h1 className="text-3xl font-heading font-bold">POS — Record Sales</h1>
-          <p className="text-muted-foreground mt-1">
-            Add items to buffer and confirm sale
-          </p>
+        {/* Search and Category Filters */}
+        <div className="mb-4 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search menu items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Category Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className="flex flex-col items-center gap-1 h-auto py-2 px-3"
+              >
+                <span className="text-xs">{category}</span>
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Menu Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {menuItems.map((item: any) => (
+          {filteredMenuItems.map((item: any) => (
             <MenuItemCard
               key={item.id}
               item={item}
@@ -163,6 +235,7 @@ export default function POSSale() {
           onRemove={handleRemoveFromBuffer}
           onClear={handleClearBuffer}
           onUpdateQuantity={handleUpdateQuantity}
+          onEdit={handleEditBufferItem}
           onConfirmSale={handleConfirmSale}
         />
       </div>
@@ -172,6 +245,7 @@ export default function POSSale() {
         open={showAddModal}
         onOpenChange={setShowAddModal}
         menuItem={selectedMenuItem}
+        initialQuantity={editingItem?.quantity || 1}
         onAddToBuffer={handleAddToBuffer}
       />
     </div>

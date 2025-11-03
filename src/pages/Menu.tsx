@@ -185,39 +185,65 @@ export default function Menu() {
       return;
     }
 
+    // Additional validation: Check for duplicate ingredient IDs
+    const ingredientIds = recipeIngredients.map(ing => ing.ingredient_id);
+    const uniqueIds = new Set(ingredientIds);
+    if (ingredientIds.length !== uniqueIds.size) {
+      toast.error('Duplicate ingredients detected in recipe. Please remove duplicates.');
+      console.error('Duplicate ingredient IDs:', ingredientIds);
+      return;
+    }
+
     setShowConfirmModal(false);
     setSubmitting(true);
 
     try {
+      // Create a deduplicated recipe array
       const dedupedRecipe = recipeIngredients.map(ing => ({ 
         ingredient_id: ing.ingredient_id, 
         qty_per_item: Number(ing.quantityPerItem)
       }));
 
+      // Log the recipe data being sent for debugging
+      console.log('Sending recipe data to backend:', dedupedRecipe);
+      
+      // Additional check: Verify no duplicates in dedupedRecipe
+      const dedupedIngredientIds = dedupedRecipe.map(r => r.ingredient_id);
+      const dedupedUniqueIds = new Set(dedupedIngredientIds);
+      if (dedupedIngredientIds.length !== dedupedUniqueIds.size) {
+        toast.error('Internal error: Duplicate ingredients detected after deduplication.');
+        console.error('Duplicate ingredient IDs after deduplication:', dedupedIngredientIds);
+        setSubmitting(false);
+        return;
+      }
+
       const isUpdate = editingMenuId !== null;
       
       if (menuForm.category === 'Other' && !customCategory.trim()) {
         toast.error('Please specify a custom category');
+        setSubmitting(false);
         return;
       }
 
       // Use custom category if 'Other' is selected
-      const categoryToSave = menuForm.category === 'Other' ? customCategory : menuForm.category;      await saveMenuItem({
+      const categoryToSave = menuForm.category === 'Other' ? customCategory : menuForm.category;
+      await saveMenuItem({
         id: editingMenuId ? parseInt(editingMenuId) : null, // Omit for creation, include for update
         name: menuForm.name,
         price: menuForm.basePrice,
         category: categoryToSave,
         active: menuForm.active,
         recipe: dedupedRecipe,
-        tax_rate: menuForm.taxRate && !isNaN(parseFloat(menuForm.taxRate)) ? parseFloat(menuForm.taxRate) : undefined,      });
+        tax_rate: menuForm.taxRate && !isNaN(parseFloat(menuForm.taxRate)) ? parseFloat(menuForm.taxRate) : undefined,
+      });
 
-    setMenuForm({
-      name: '',
-      basePrice: 0,
-      category: '',
-      active: true,
-      taxRate: '',
-    });
+      setMenuForm({
+        name: '',
+        basePrice: 0,
+        category: '',
+        active: true,
+        taxRate: '',
+      });
       setRecipeIngredients([]);
       setEditingMenuId(null);
       setCustomCategory('');

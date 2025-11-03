@@ -31,9 +31,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Quick Sales', href: '/sales/quick', icon: ShoppingCart },
-  { name: 'POS Sale', href: '/sales/pos', icon: Zap },
-  { name: 'Stock Count', href: '/stock/count', icon: BarChart3 },
+  { name: 'POS Sale', href: '/sales/pos', icon: ShoppingCart },
   { name: 'Purchases', href: '/purchases/new', icon: Package },
   { name: 'Expenses', href: '/expenses/new', icon: Receipt },
   { name: 'Menu & Recipes', href: '/menu', icon: UtensilsCrossed },
@@ -181,8 +179,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               'justify-start', // Always left-align
               'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
             )}
-          >
-            {/* Fixed width icon container - prevents jiggle and ensures alignment */}
+            aria-label="Sign out of your account"
+          >            {/* Fixed width icon container - prevents jiggle and ensures alignment */}
             <div className="w-10 h-5 flex items-center justify-center flex-shrink-0">
               <LogOut className="h-5 w-5" />
             </div>

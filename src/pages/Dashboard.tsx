@@ -300,10 +300,10 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3">
               <Button 
                 className="gradient-primary shadow-glow justify-start"
-                onClick={() => navigate('/sales/quick')}
+                onClick={() => navigate('/sales/pos')}
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
-                Quick Sale
+                POS Sale
               </Button>
               <Button 
                 variant="secondary"

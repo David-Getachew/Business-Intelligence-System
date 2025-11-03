@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -16,6 +16,7 @@ interface AddSaleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   menuItem: any;
+  initialQuantity?: number;
   onAddToBuffer: (quantity: number, note?: string) => void;
 }
 
@@ -23,10 +24,16 @@ export function AddSaleModal({
   open,
   onOpenChange,
   menuItem,
+  initialQuantity = 1,
   onAddToBuffer,
 }: AddSaleModalProps) {
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [submitting, setSubmitting] = useState(false);
+
+  // Update quantity when initialQuantity changes (e.g., when editing)
+  useEffect(() => {
+    setQuantity(initialQuantity);
+  }, [initialQuantity, open]);
 
   const handleAddToBuffer = () => {
     if (quantity <= 0) return;
@@ -48,9 +55,9 @@ export function AddSaleModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add to Sale</DialogTitle>
+          <DialogTitle>{initialQuantity !== 1 ? 'Edit Item' : 'Add to Sale'}</DialogTitle>
           <DialogDescription>
-            Add {menuItem?.name} to your buffer
+            {initialQuantity !== 1 ? 'Edit quantity for' : 'Add'} {menuItem?.name} to your buffer
           </DialogDescription>
         </DialogHeader>
 
@@ -145,10 +152,10 @@ export function AddSaleModal({
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
+                {initialQuantity !== 1 ? 'Updating...' : 'Adding...'}
               </>
             ) : (
-              'Add to Buffer'
+              initialQuantity !== 1 ? 'Update Buffer' : 'Add to Buffer'
             )}
           </Button>
         </DialogFooter>

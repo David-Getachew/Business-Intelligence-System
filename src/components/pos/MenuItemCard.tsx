@@ -21,7 +21,7 @@ interface MenuItemCardProps {
     name: string;
     price: number;
     category: string;
-    image?: string;
+    image_url?: string;
   };
   onAdd: () => void;
   onImageUploaded?: () => void;
@@ -73,8 +73,14 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
 
       const data = await response.json();
 
+      // Check if response is successful
       if (!response.ok) {
         throw new Error(data.error || 'Upload failed');
+      }
+
+      // Check if we received a public URL
+      if (!data.publicUrl) {
+        throw new Error('Upload succeeded but no image URL was returned');
       }
 
       toast.success('Image uploaded successfully!');
@@ -93,9 +99,9 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
       <Card className="overflow-hidden hover:shadow-glow transition-shadow h-full flex flex-col">
         {/* Image Section */}
         <div className="relative w-full aspect-square bg-muted flex items-center justify-center overflow-hidden group">
-          {item.image ? (
+          {item.image_url ? (
             <img
-              src={item.image}
+              src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover"
             />
@@ -106,7 +112,6 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
             </div>
           )}
           <Button
-          <Button
             variant="secondary"
             size="sm"
             onClick={() => setShowUploadModal(true)}
@@ -114,8 +119,9 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
             disabled={!session}
           >
             <Upload className="h-4 w-4 mr-1" />
-            Add Image
+            {item.image_url ? 'Edit Image' : 'Add Image'}
           </Button>
+        </div>
         {/* Content Section */}
         <CardContent className="flex-1 flex flex-col p-3">
           <div className="flex-1 mb-3">

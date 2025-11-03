@@ -9,9 +9,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MainLayout } from "./components/layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
-import QuickSales from "./pages/QuickSales";
 import POSSale from "./pages/POSSale";
-import StockCount from "./pages/StockCount";
 import Purchases from "./pages/Purchases";
 import Expenses from "./pages/Expenses";
 import Menu from "./pages/Menu";
@@ -37,9 +35,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
-                <Route path="/sales/quick" element={<ProtectedRoute><MainLayout><ErrorBoundary><QuickSales /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/sales/pos" element={<ProtectedRoute><MainLayout><ErrorBoundary><POSSale /></ErrorBoundary></MainLayout></ProtectedRoute>} />
-                <Route path="/stock/count" element={<ProtectedRoute><MainLayout><ErrorBoundary><StockCount /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/purchases/new" element={<ProtectedRoute><MainLayout><ErrorBoundary><Purchases /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/expenses/new" element={<ProtectedRoute><MainLayout><ErrorBoundary><Expenses /></ErrorBoundary></MainLayout></ProtectedRoute>} />
                 <Route path="/menu" element={<ProtectedRoute><MainLayout><ErrorBoundary><Menu /></ErrorBoundary></MainLayout></ProtectedRoute>} />

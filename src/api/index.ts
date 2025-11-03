@@ -235,17 +235,34 @@ export async function saveMenuItem(payload: MenuItemPayload): Promise<{
         qty_per_item: Number(ing.qty_per_item) // numeric, required, cannot be null
       }));
 
+    // Debug: Check for duplicates in the recipe data
+    const ingredientIds = validRecipes.map(r => r.ingredient_id);
+    const uniqueIds = new Set(ingredientIds);
+    let recipesToInsert = validRecipes;
+    
+    if (ingredientIds.length !== uniqueIds.size) {
+      console.warn('[API] Duplicate ingredient IDs detected in recipe:', ingredientIds);
+      // Remove duplicates by keeping only the first occurrence
+      recipesToInsert = validRecipes.filter((recipe, index, self) => 
+        index === self.findIndex(r => r.ingredient_id === recipe.ingredient_id)
+      );
+      console.log('[API] Deduplicated recipe:', recipesToInsert);
+    }
+
     // Omit p_menu_item_id for creation; include last for update
     const rpcArgs = {
       p_name: payload.name,
       p_price: payload.price,
       p_category: payload.category,
       p_active: payload.active,
-      p_recipe: validRecipes as unknown as any,
+      p_recipe: recipesToInsert as unknown as any,
       // Only include p_menu_item_id for updates, omit for creation
       ...(payload.id !== undefined && { p_menu_item_id: payload.id }),
       // Include tax_rate if provided
-      ...(payload.tax_rate !== undefined && { p_tax_rate: payload.tax_rate })    };
+      ...(payload.tax_rate !== undefined && { p_tax_rate: payload.tax_rate })
+    };
+
+    console.log('[API] Calling save_menu_item_and_recipe with args:', rpcArgs);
 
     const { data, error } = await supabase.rpc('save_menu_item_and_recipe', rpcArgs);
     if (error) throw error;
@@ -259,6 +276,10 @@ export async function saveMenuItem(payload: MenuItemPayload): Promise<{
   };
   } catch (error: any) {
     console.error('[API] saveMenuItem error:', error);
+    // Re-throw the error with more context
+    if (error.code === '23505') {
+      throw new Error('Duplicate ingredient detected in recipe. Please remove duplicates and try again.');
+    }
     throw error;
   }
 }
@@ -695,7 +716,10 @@ export async function fetchMenuItems() {
         active,
         image_url,
         tax_rate,
-        created_at
+        created_at,
+        menu_item_images (
+          image_url
+        )
       `)
       .order('name', { ascending: true });
 
@@ -703,6 +727,10 @@ export async function fetchMenuItems() {
 
     const transformed = (data || []).map(item => ({
       ...item,
+      // Use the image_url from menu_item_images if available, otherwise fallback to menu_items.image_url
+      image_url: item.menu_item_images && item.menu_item_images.length > 0 
+        ? item.menu_item_images[0].image_url 
+        : item.image_url,
       // recipe populated on demand via view in edit flow
       recipe_count: 0,
     }));
@@ -835,14 +863,28 @@ export async function fetchStockCounts() {
 
     if (error) throw error;
 
-    return (data || []).map((item: any) => ({
+    const rows = (data || []) as any[];
+    const userIds = Array.from(new Set(rows.map(r => r.recorded_by).filter(Boolean)));
+
+    let userIdToName: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles, error: profErr } = await supabase!
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+      if (!profErr && profiles) {
+        userIdToName = Object.fromEntries(profiles.map(p => [p.id as string, (p.full_name as string) || '']));
+      }
+    }
+
+    return rows.map((item: any) => ({
       id: item.id,
       date: item.count_date,
       itemName: (item.ingredients as any)?.name || 'Unknown',
       quantity: item.quantity,
       unit: item.unit,
       notes: item.notes,
-      loggedBy: item.recorded_by ? 'User' : 'System',
+      loggedBy: item.recorded_by ? (userIdToName[item.recorded_by] || item.recorded_by) : 'System',
     }));
   } catch (error: any) {
     console.error('[API] fetchStockCounts error:', error);

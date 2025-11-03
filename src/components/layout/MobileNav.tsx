@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 const mobileNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Sales', href: '/sales/quick', icon: ShoppingCart },
+  { name: 'POS Sale', href: '/sales/pos', icon: ShoppingCart },
   { name: 'Inventory', href: '/inventory', icon: Boxes },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },

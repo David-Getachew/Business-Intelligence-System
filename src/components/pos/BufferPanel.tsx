@@ -1,4 +1,4 @@
-import { Trash2, ShoppingCart } from 'lucide-react';
+import { Trash2, ShoppingCart, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ interface BufferPanelProps {
   onRemove: (id: string) => void;
   onClear: () => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
+  onEdit?: (item: BufferItem) => void; // Add onEdit prop
 }
 
 export function BufferPanel({
@@ -25,17 +26,16 @@ export function BufferPanel({
   onRemove,
   onClear,
   onUpdateQuantity,
+  onEdit,
   onConfirmSale,
 }: BufferPanelProps & { onConfirmSale?: () => void }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const taxRate = items.length > 0 
-    ? items.reduce((sum, item) => sum + (item.taxRate || 0), 0) / items.length
-    : 0;
-  const tax = (subtotal * taxRate) / 100;
+  // Calculate tax per item instead of averaging rates
+  const tax = items.reduce((sum, item) => sum + (item.price * item.quantity * (item.taxRate || 0) / 100), 0);
   const total = subtotal + tax;
 
   return (
-    <Card className="shadow-card sticky top-6 lg:h-fit">
+    <Card className="shadow-card lg:sticky lg:top-6 lg:h-fit">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShoppingCart className="h-5 w-5" />
@@ -62,14 +62,24 @@ export function BufferPanel({
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemove(item.id)}
-                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit?.(item)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemove(item.id)}
+                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Quantity and Price */}

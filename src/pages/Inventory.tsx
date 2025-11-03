@@ -32,8 +32,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { fetchInventory, adjustIngredientStock } from '@/api/index';
+import { fetchInventory, adjustIngredientStock, fetchIngredients, fetchStockCounts } from '@/api/index';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,10 +48,23 @@ interface Supplier {
   defaultPackSize?: number;
 }
 
+interface StockLog {
+  id: string;
+  date: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  notes?: string;
+  loggedBy: string;
+}
+
+const UNITS = ['kg', 'g', 'L', 'ml', 'pcs', 'box', 'dozen'];
+
 export default function Inventory() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +74,10 @@ export default function Inventory() {
   const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+  const [showAddCountModal, setShowAddCountModal] = useState(false);
+  const [stockLogs, setStockLogs] = useState<StockLog[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 7; // Changed to 7 items per page as requested
   
   const [adjustForm, setAdjustForm] = useState({
     adjustQty: 0,
@@ -74,18 +91,32 @@ export default function Inventory() {
     active: true,
   });
 
+  const [addCountForm, setAddCountForm] = useState({
+    selectedIngredientId: '',
+    quantity: '',
+    unit: 'kg',
+    notes: '',
+  });
+
   useEffect(() => {
-    loadInventory();
+    loadData();
   }, []);
 
-  const loadInventory = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const inventory = await fetchInventory();
-      setInventoryItems(inventory);
+      const [inventoryData, ingredientsData, stockCountsData] = await Promise.all([
+        fetchInventory(),
+        fetchIngredients(),
+        fetchStockCounts(),
+      ]);
+      setInventoryItems(inventoryData);
+      setIngredients(ingredientsData.filter((item: any) => item.active));
+      setStockLogs(stockCountsData);
+      setCurrentPage(1);
     } catch (error: any) {
-      console.error('Error loading inventory:', error);
-      toast.error('Failed to load inventory');
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -107,9 +138,6 @@ export default function Inventory() {
       toast.error('Failed to load movement history');
     }
   };
-
-  
-
 
   const openAdjustModal = (item: any) => {
     if (!isAdmin) {
@@ -133,7 +161,6 @@ export default function Inventory() {
     });
     setShowEditSettingsModal(true);
   };
-
 
   const handleAdjustStock = async () => {
     if (!selectedItem || !adjustForm.reason.trim()) {
@@ -159,11 +186,11 @@ export default function Inventory() {
         null                        // _unit_cost (numeric, nullable)
       );
 
-    setShowAdjustModal(false);
+      setShowAdjustModal(false);
       setSuccessMessage(`Stock adjustment recorded for ${selectedItem?.name}`);
-    setShowSuccessModal(true);
+      setShowSuccessModal(true);
       setAdjustForm({ adjustQty: 0, reason: '' });
-    setSelectedItem(null);
+      setSelectedItem(null);
       await loadInventory();
       toast.success('Inventory adjusted successfully!');
     } catch (error: any) {
@@ -171,6 +198,72 @@ export default function Inventory() {
       toast.error(error.message || 'Failed to adjust inventory');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAddCount = async () => {
+    if (!user) {
+      toast.error('You must be logged in to log stock counts');
+      return;
+    }
+    
+    if (!addCountForm.selectedIngredientId || !addCountForm.quantity || !addCountForm.unit) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    const ingredient = ingredients.find(ing => ing.id.toString() === addCountForm.selectedIngredientId);
+    if (!ingredient) {
+      toast.error('Selected ingredient not found');
+      return;
+    }
+
+    const parsedQuantity = parseFloat(addCountForm.quantity);
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = [{
+        ingredient_id: parseInt(addCountForm.selectedIngredientId),
+        quantity: parsedQuantity,
+        unit: addCountForm.unit,
+        notes: addCountForm.notes || undefined,
+        recorded_by: user.id,
+      }];
+
+      const { error } = await supabase!.rpc('log_stock_count', {
+        p_counts: payload,
+      });
+
+      if (error) throw error;
+
+      toast.success('Stock count logged successfully!');
+      setShowAddCountModal(false);
+      setAddCountForm({
+        selectedIngredientId: '',
+        quantity: '',
+        unit: 'kg',
+        notes: '',
+      });
+      await loadData();
+    } catch (error: any) {
+      console.error('Error logging stock count:', error);
+      toast.error(error.message || 'Failed to log stock count');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const loadInventory = async () => {
+    try {
+      const inventory = await fetchInventory();
+      setInventoryItems(inventory);
+    } catch (error: any) {
+      console.error('Error loading inventory:', error);
+      toast.error('Failed to load inventory');
     }
   };
 
@@ -184,7 +277,28 @@ export default function Inventory() {
     movement => movement.ingredient_id === selectedItem?.ingredient_id
   );
 
-  
+  // Pagination for stock logs
+  const totalPages = Math.ceil(stockLogs.length / itemsPerPage);
+  const paginatedLogs = stockLogs.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
@@ -201,10 +315,16 @@ export default function Inventory() {
             <h2 className="text-xl font-heading font-bold">Current Inventory</h2>
           </div>
           {isAdmin && (
-            <Button onClick={() => setShowAddIngredientModal(true)} className="gradient-primary">
-            <Plus className="mr-2 h-4 w-4" />
-              Add Ingredient
-          </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowAddCountModal(true)} variant="secondary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Count
+              </Button>
+              <Button onClick={() => setShowAddIngredientModal(true)} className="gradient-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Ingredient
+              </Button>
+            </div>
           )}
         </div>
 
@@ -281,8 +401,79 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
-        
+        {/* Live Stock Count Section */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Live Stock Count</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Logged By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No stock counts recorded yet
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="font-medium">{formatDate(log.date)}</TableCell>
+                          <TableCell>{log.itemName}</TableCell>
+                          <TableCell className="text-right font-semibold">{log.quantity}</TableCell>
+                          <TableCell className="text-muted-foreground">{log.unit}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                            {log.notes || '—'}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{log.loggedBy}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Adjust Stock Modal */}
         <Dialog open={showAdjustModal} onOpenChange={setShowAdjustModal}>
@@ -443,6 +634,105 @@ export default function Inventory() {
           </DialogContent>
         </Dialog>
 
+        {/* Add Count Modal */}
+        <Dialog open={showAddCountModal} onOpenChange={setShowAddCountModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Stock Count</DialogTitle>
+              <DialogDescription>
+                Record a physical stock count for an item
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Item Selector */}
+              <div className="space-y-2">
+                <Label htmlFor="ingredient">Ingredient</Label>
+                <Select value={addCountForm.selectedIngredientId} onValueChange={(value) => setAddCountForm(prev => ({ ...prev, selectedIngredientId: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an ingredient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ingredients.map((ing) => (
+                      <SelectItem key={ing.id} value={ing.id.toString()}>
+                        {ing.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Quantity Input */}
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={addCountForm.quantity}
+                  onChange={(e) => setAddCountForm(prev => ({ ...prev, quantity: e.target.value }))}
+                />
+              </div>
+
+              {/* Unit Selector */}
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit</Label>
+                <Select value={addCountForm.unit} onValueChange={(value) => setAddCountForm(prev => ({ ...prev, unit: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNITS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="e.g., Damaged items, discrepancies..."
+                  value={addCountForm.notes}
+                  onChange={(e) => setAddCountForm(prev => ({ ...prev, notes: e.target.value }))}
+                  className="resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddCountModal(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddCount}
+                className="gradient-primary"
+                disabled={submitting || !addCountForm.selectedIngredientId || !addCountForm.quantity || !addCountForm.unit}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Count'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Edit Inventory Settings Modal */}
         <Dialog open={showEditSettingsModal} onOpenChange={setShowEditSettingsModal}>
           <DialogContent>
@@ -507,8 +797,6 @@ export default function Inventory() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        
 
         {/* Success Modal */}
         <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
