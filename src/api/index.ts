@@ -242,11 +242,13 @@ export async function saveMenuItem(payload: MenuItemPayload): Promise<{
     
     if (ingredientIds.length !== uniqueIds.size) {
       console.warn('[API] Duplicate ingredient IDs detected in recipe:', ingredientIds);
-      // Remove duplicates by keeping only the first occurrence
-      recipesToInsert = validRecipes.filter((recipe, index, self) => 
-        index === self.findIndex(r => r.ingredient_id === recipe.ingredient_id)
-      );
-      console.log('[API] Deduplicated recipe:', recipesToInsert);
+      // Remove duplicates by keeping only the last occurrence (matches RPC behavior)
+      const seen = new Map<number, { ingredient_id: number; qty_per_item: number }>();
+      for (const recipe of validRecipes) {
+        seen.set(recipe.ingredient_id, recipe);
+      }
+      recipesToInsert = Array.from(seen.values());
+      // intentionally silent in production
     }
 
     // Omit p_menu_item_id for creation; include last for update
@@ -262,7 +264,7 @@ export async function saveMenuItem(payload: MenuItemPayload): Promise<{
       ...(payload.tax_rate !== undefined && { p_tax_rate: payload.tax_rate })
     };
 
-    console.log('[API] Calling save_menu_item_and_recipe with args:', rpcArgs);
+    // intentionally silent in production
 
     const { data, error } = await supabase.rpc('save_menu_item_and_recipe', rpcArgs);
     if (error) throw error;

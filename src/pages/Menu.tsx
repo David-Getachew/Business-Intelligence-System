@@ -204,8 +204,7 @@ export default function Menu() {
         qty_per_item: Number(ing.quantityPerItem)
       }));
 
-      // Log the recipe data being sent for debugging
-      console.log('Sending recipe data to backend:', dedupedRecipe);
+      // Silent in production
       
       // Additional check: Verify no duplicates in dedupedRecipe
       const dedupedIngredientIds = dedupedRecipe.map(r => r.ingredient_id);

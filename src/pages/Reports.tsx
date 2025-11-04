@@ -95,8 +95,11 @@ export default function Reports() {
     toast.success('Filter cleared');
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount == null || isNaN(Number(amount))) {
+      return '$0.00';
+    }
+    return `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDateRange = (startDate: string, endDate: string) => {
@@ -257,7 +260,7 @@ export default function Reports() {
                       <TableCell className="font-medium w-1/3">
                         {formatDateRange(report.week_start, report.week_end)}
                       </TableCell>
-                      <TableCell>{formatCurrency(report.revenue)}</TableCell>
+                      <TableCell>{formatCurrency(report.total_revenue)}</TableCell>
                       <TableCell>{formatCurrency(report.gross_profit)}</TableCell>
                       <TableCell>{formatCurrency(report.net_profit)}</TableCell>
                       <TableCell>
@@ -294,11 +297,11 @@ export default function Reports() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Revenue</p>
-                  <p className="text-2xl font-bold">{formatCurrency(filteredReports[0].revenue)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(filteredReports[0].total_revenue)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">COGS</p>
-                  <p className="text-2xl font-bold">{formatCurrency(filteredReports[0].cogs)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(filteredReports[0].total_cogs)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Operating Expense</p>

@@ -34,8 +34,19 @@ export default function POSSale() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [editingItem, setEditingItem] = useState<BufferItem | null>(null); // For editing buffer items
 
-  // Get unique categories from menu items
-  const categories = ['All', ...Array.from(new Set(menuItems.map(item => item.category)))];
+  // Get unique categories from menu items, excluding custom/Other categories
+  // Predefined categories that should have their own filter buttons
+  const predefinedCategories = ['Food', 'Beverage', 'Snack', 'Dessert'];
+  
+  // Get all unique categories from menu items
+  const allCategories = Array.from(new Set(menuItems.map(item => item.category)));
+  
+  // Filter to only include predefined categories in the category buttons
+  // Custom/Other categories will only be visible when "All" is selected
+  const categoryButtons = allCategories.filter(cat => 
+    predefinedCategories.includes(cat)
+  );
+  const categories = ['All', ...categoryButtons];
 
   useEffect(() => {
     loadMenuItems();
@@ -53,9 +64,13 @@ export default function POSSale() {
     }
     
     // Apply category filter
+    // When "All" is selected, show all items (including custom categories)
+    // When a specific category is selected, only show items with that exact category match
     if (selectedCategory !== 'All') {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
+    // Note: Custom/Other categories are automatically included when "All" is selected
+    // and excluded when specific categories are selected
     
     setFilteredMenuItems(filtered);
   }, [menuItems, searchTerm, selectedCategory]);

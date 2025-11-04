@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,15 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageVersion, setImageVersion] = useState(0);
+
+
+  // Generate cache-busted image URL
+  const imageUrl = useMemo(() => {
+    if (!item.image_url) return null;
+    const separator = item.image_url.includes('?') ? '&' : '?';
+    return `${item.image_url}${separator}v=${imageVersion}`;
+  }, [item.image_url, imageVersion]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,13 +92,19 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
         throw new Error('Upload succeeded but no image URL was returned');
       }
 
+      // Use the cache-busted URL from the response if available
+      // The edge function returns publicUrl with cache-busting param
+      const imageUrlWithCacheBust = data.publicUrl || data.baseUrl;
+      
       toast.success('Image uploaded successfully!');
       setShowUploadModal(false);
       setSelectedFile(null);
+      // Increment image version to force cache refresh
+      setImageVersion(prev => prev + 1);
       onImageUploaded?.();
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      toast.error(error.message || 'Failed to upload image');
+      toast.error(error?.message || 'Failed to upload image');
     } finally {
       setUploading(false);
     }
@@ -99,11 +114,19 @@ export function MenuItemCard({ item, onAdd, onImageUploaded }: MenuItemCardProps
       <Card className="overflow-hidden hover:shadow-glow transition-shadow h-full flex flex-col">
         {/* Image Section */}
         <div className="relative w-full aspect-square bg-muted flex items-center justify-center overflow-hidden group">
-          {item.image_url ? (
+          {imageUrl ? (
             <img
-              src={item.image_url}
+              key={`${item.id}-${imageVersion}`}
+              src={imageUrl}
               alt={item.name}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback: try without cache-busting if URL fails
+                const target = e.target as HTMLImageElement;
+                if (item.image_url && target.src !== item.image_url) {
+                  target.src = item.image_url;
+                }
+              }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">

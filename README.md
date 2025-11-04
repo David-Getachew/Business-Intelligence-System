@@ -1,3 +1,93 @@
+Business Intelligence System (MVP)
+
+Overview
+
+This project is a mobile-first Business Intelligence MVP for single-location food businesses. It provides:
+
+- Transaction logging (POS sales, purchases, expenses)
+- Menu, recipe, and inventory management with stock tracking
+- Automated KPIs and weekly reports
+- Secure RBAC (admin, staff) with Supabase Auth
+- Supabase as the unified backend (Postgres, Auth, Storage, Edge Functions)
+
+Architecture
+
+- Frontend: React + TypeScript, TanStack Query, Tailwind UI components
+- Backend: Supabase (Postgres, RLS, RPCs, Storage, Edge Functions)
+- Auth: Supabase Auth with profiles table for roles
+
+Key Features
+
+- POS Sales screen with category filtering and buffer checkout
+- Menu and recipe editor with atomic save RPC
+- Inventory tracking and movement logs
+- Reports page for weekly summaries and AI analysis text
+- Image management for menu items (Storage with overwrite and cache-busting)
+
+Security
+
+- RBAC enforced client-side and via RLS (admin-only pages: dashboard, reports, transactions, settings)
+- Sensitive operations implemented as SECURITY DEFINER RPCs where RLS would block app logic
+- File uploads validated for type and size; fixed storage paths with overwrite
+- No hard-coded secrets in repository; environment variables required
+
+Getting Started
+
+Prerequisites
+
+- Node.js 18+
+- Supabase project (URL and anon keys)
+
+Environment Variables
+
+Create a local .env file (not committed). Required variables:
+
+- VITE_PUBLIC_SUPABASE_URL=
+- VITE_PUBLIC_SUPABASE_ANON_KEY=
+
+Install and Run
+
+1) Install dependencies
+
+   npm install
+
+2) Start development server
+
+   npm run dev
+
+3) Build for production
+
+   npm run build
+
+Supabase Setup
+
+- Enable Auth and create a profiles table mapping auth.users.id to role (admin, staff)
+- Apply migrations for tables: menu_items, ingredients, recipe_ingredients, purchases, sales, expenses, inventory tables, summaries
+- Ensure RPCs exist: save_menu_item_and_recipe (SECURITY DEFINER), log_menu_item_image, update_sale_line_item, log_buffer_sales
+- Configure Storage bucket: menu-item-images (public)
+
+Image Handling
+
+- Images are uploaded via an Edge Function (upload-menu-item-image)
+- Overwrites same path (menu_items/{id}.{ext}) with cache-control headers
+- Client adds cache-busting query param and re-renders using a version key
+
+RBAC & Routing
+
+- Staff are restricted to POS, purchases, expenses, menu, and inventory
+- Admins can access dashboard, transactions, reports, and settings
+- Unauthorized staff redirection goes to /sales/pos
+
+Contributing
+
+- Use TypeScript strictness and keep components small and typed
+- Avoid console logs in production; use toasts for user-facing messages
+- Follow mobile-first design and Tailwind for styling
+
+License
+
+This project is provided as-is for demonstration and MVP purposes.
+
 # Business Intelligence System
 
 ## Overview

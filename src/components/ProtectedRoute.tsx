@@ -23,7 +23,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     if (!loading && user && profile && allowedRoles && !allowedRoles.includes(profile.role)) {
       // Staff users should be redirected to forms, not dashboard
       if (profile.role === 'staff') {
-        navigate('/sales/quick', { replace: true });
+        navigate('/sales/pos', { replace: true });
         // Show access denied notification
         import('sonner').then(({ toast }) => {
           toast.error('Access Denied', {
